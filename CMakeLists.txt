@@ -31,7 +31,6 @@ add_library(perfoverlay_sensors STATIC
     third_party/ADLX/SDK/Platform/Windows/WinAPIs.cpp
 )
 
-# Suppress /W4 warnings on third-party vendor code
 if(MSVC)
     set_source_files_properties(
         third_party/ADLX/SDK/ADLXHelper/Windows/Cpp/ADLXHelper.cpp
@@ -53,6 +52,20 @@ target_link_libraries(perfoverlay_sensors PUBLIC
     pdh
 )
 
+# Capture static library (ETW PresentMon frame capture)
+add_library(perfoverlay_capture STATIC
+    src/capture/frame_time_calculator.cpp
+    src/capture/foreground_tracker.cpp
+    src/capture/etw_present_capture.cpp
+)
+target_include_directories(perfoverlay_capture PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(perfoverlay_capture PUBLIC
+    perfoverlay_core
+    advapi32
+)
+
 # Main executable
 add_executable(perfoverlay
     src/main.cpp
@@ -60,6 +73,7 @@ add_executable(perfoverlay
 target_link_libraries(perfoverlay PRIVATE
     perfoverlay_core
     perfoverlay_sensors
+    perfoverlay_capture
 )
 
 # Tests
@@ -69,10 +83,12 @@ find_package(Catch2 3 REQUIRED)
 add_executable(perfoverlay_tests
     tests/test_frame_stats.cpp
     tests/test_sensors.cpp
+    tests/test_capture.cpp
 )
 target_link_libraries(perfoverlay_tests PRIVATE
     perfoverlay_core
     perfoverlay_sensors
+    perfoverlay_capture
     Catch2::Catch2WithMain
 )
 target_include_directories(perfoverlay_tests PRIVATE
