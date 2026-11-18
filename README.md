@@ -156,7 +156,7 @@ Gerçek zamanlı FPS ölçümü Windows ETW çekirdek oturumu gerektirir:
 ### Derleme Adımları
 ```powershell
 # 1. Depoyu klonlayın
-git clone https://github.com/berkan/perfoverlay.git
+git clone https://github.com/MosIbOad/perfoverlay.git
 cd perfoverlay
 
 # 2. Release konfigürasyonu ve derleme (Statik CRT /MT ile tek exe)
