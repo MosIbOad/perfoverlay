@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/metrics_hub.hpp"
 #include "sensors/sensor_types.hpp"
 
 #include <atomic>
@@ -15,7 +16,7 @@ namespace perfoverlay::sensors {
  * @brief Manages hardware sensors, orchestrates background polling at 500 ms intervals
  *        using a dedicated std::jthread, and provides thread-safe access to SensorSnapshot.
  */
-class SensorManager {
+class SensorManager : public core::ISensorSnapshotProvider {
 public:
     SensorManager();
     explicit SensorManager(std::vector<std::unique_ptr<ISensor>> sensors);
@@ -55,7 +56,7 @@ public:
     /**
      * @brief Returns a thread-safe copy of the latest sensor snapshot.
      */
-    [[nodiscard]] SensorSnapshot getSnapshot() const;
+    [[nodiscard]] SensorSnapshot getSnapshot() const override;
 
     [[nodiscard]] bool isRunning() const noexcept { return running_.load(); }
     [[nodiscard]] size_t sensorCount() const noexcept { return sensors_.size(); }

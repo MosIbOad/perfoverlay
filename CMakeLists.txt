@@ -16,6 +16,7 @@ endif()
 # Core static library (OS-agnostic, unit-testable)
 add_library(perfoverlay_core STATIC
     src/core/frame_stats.cpp
+    src/core/metrics_hub.cpp
 )
 target_include_directories(perfoverlay_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -84,6 +85,7 @@ add_executable(perfoverlay_tests
     tests/test_frame_stats.cpp
     tests/test_sensors.cpp
     tests/test_capture.cpp
+    tests/test_metrics_hub.cpp
 )
 target_link_libraries(perfoverlay_tests PRIVATE
     perfoverlay_core

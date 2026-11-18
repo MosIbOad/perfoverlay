@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/metrics_hub.hpp"
+
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -7,11 +9,7 @@
 
 namespace perfoverlay::capture {
 
-struct ForegroundProcessInfo {
-    uint32_t processId{0};
-    std::string processName;
-    std::string windowTitle;
-};
+using ForegroundProcessInfo = core::ActiveGameInfo;
 
 /**
  * @brief Tracks the active foreground window and process ID using Win32 APIs
@@ -20,17 +18,17 @@ struct ForegroundProcessInfo {
  * Automatically filters out perfoverlay itself, Windows Explorer, the desktop shell,
  * and background OS system windows.
  */
-class ForegroundProcessTracker {
+class ForegroundProcessTracker : public core::IForegroundProcessProvider {
 public:
     ForegroundProcessTracker();
-    ~ForegroundProcessTracker() = default;
+    ~ForegroundProcessTracker() override = default;
 
     /**
      * @brief Queries the currently active foreground process.
      * @return Process info if an active game/application is detected, std::nullopt if
      *         no foreground window or an excluded system process is active.
      */
-    [[nodiscard]] std::optional<ForegroundProcessInfo> getActiveProcess() const;
+    [[nodiscard]] std::optional<core::ActiveGameInfo> getActiveProcess() const override;
 
     /**
      * @brief Pure helper to evaluate if a process should be excluded from overlay tracking.

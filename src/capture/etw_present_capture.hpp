@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/frame_stats.hpp"
+#include "core/metrics_hub.hpp"
 
 #include <chrono>
 #include <memory>
@@ -34,7 +35,7 @@ struct EtwStartResult {
  * Runs in a dedicated background std::jthread. Zero DLL injection or game process hooking.
  * Records frame times per process into thread-safe FrameTimeBuffers.
  */
-class EtwPresentCapture {
+class EtwPresentCapture : public core::IPresentCaptureProvider {
 public:
     explicit EtwPresentCapture(
         size_t bufferCapacity = 2000,
@@ -63,7 +64,7 @@ public:
     /**
      * @brief Computes frame stats (FPS, 1% low, 0.1% low, avg frame time) for a target PID.
      */
-    [[nodiscard]] std::optional<core::FrameStats> getProcessStats(uint32_t processId) const;
+    [[nodiscard]] std::optional<core::FrameStats> getProcessStats(uint32_t processId) const override;
 
     /**
      * @brief Retrieves a copy of the FrameTimeBuffer for a given process.
