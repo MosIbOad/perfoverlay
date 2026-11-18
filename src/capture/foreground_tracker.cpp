@@ -52,7 +52,9 @@ bool ForegroundProcessTracker::isExcluded(uint32_t processId, uint32_t ownProces
     const std::string lowerName = toLower(processName);
     if (lowerName == "explorer.exe" || lowerName == "dwm.exe" || lowerName == "shellexperiencehost.exe" ||
         lowerName == "startmenuexperiencehost.exe" || lowerName == "searchhost.exe" ||
-        lowerName == "textinputhost.exe" || lowerName == "applicationframehost.exe" || lowerName == "lockapp.exe") {
+        lowerName == "textinputhost.exe" || lowerName == "applicationframehost.exe" || lowerName == "lockapp.exe" ||
+        lowerName == "cmd.exe" || lowerName == "powershell.exe" || lowerName == "pwsh.exe" ||
+        lowerName == "windowsterminal.exe" || lowerName == "taskmgr.exe" || lowerName == "conhost.exe") {
         return true;
     }
 
@@ -66,7 +68,7 @@ bool ForegroundProcessTracker::isExcluded(uint32_t processId, uint32_t ownProces
 
 std::optional<ForegroundProcessInfo> ForegroundProcessTracker::getActiveProcess() const {
     const HWND hwnd = GetForegroundWindow();
-    if (!hwnd || hwnd == GetDesktopWindow() || hwnd == GetShellWindow()) {
+    if (!hwnd || hwnd == GetDesktopWindow() || hwnd == GetShellWindow() || IsIconic(hwnd) || !IsWindowVisible(hwnd)) {
         return std::nullopt;
     }
 

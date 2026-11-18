@@ -92,6 +92,7 @@ public:
 
         if (status == ERROR_ALREADY_EXISTS) {
             stopSessionByName(SESSION_NAME);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             status = StartTraceW(&sessionHandle, SESSION_NAME, props);
         }
 
@@ -102,17 +103,13 @@ public:
 
         sessionHandle_ = sessionHandle;
 
-        // Enable Microsoft-Windows-DXGI Provider
-        ENABLE_TRACE_PARAMETERS enableParams{};
-        enableParams.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
-        enableParams.EnableProperty = EVENT_ENABLE_PROPERTY_IGNORE_KEYWORD_0;
-
+        // Enable Microsoft-Windows-DXGI Provider (all keywords to catch Present 42, MPO 55, etc.)
         EnableTraceEx2(sessionHandle_, &DXGI_PROVIDER_GUID, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_INFORMATION,
-                       0, 0, 0, &enableParams);
+                       ~0ULL, 0, 0, nullptr);
 
-        // Enable Microsoft-Windows-DxgKrnl Provider
+        // Enable Microsoft-Windows-DxgKrnl Provider (all keywords to catch Dxgk_Present 184, 171, 259, etc.)
         EnableTraceEx2(sessionHandle_, &DXGKRNL_PROVIDER_GUID, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
-                       TRACE_LEVEL_INFORMATION, 0, 0, 0, &enableParams);
+                       TRACE_LEVEL_INFORMATION, ~0ULL, 0, 0, nullptr);
 
         running_.store(true);
 
@@ -153,6 +150,23 @@ public:
         if (it == processBuffers_.end() || it->second.empty()) {
             return std::nullopt;
         }
+
+        const auto now = std::chrono::steady_clock::now();
+
+        // If no present event has arrived in the last 500 ms, the process is inactive, paused or minimized
+        auto seenIt = lastSeenTime_.find(processId);
+        if (seenIt != lastSeenTime_.end()) {
+            if ((now - seenIt->second) > std::chrono::milliseconds(500)) {
+                return std::nullopt;
+            }
+        }
+
+        // Discard entries older than 1 second from now so stats represent only recent frames
+        it->second.discardOlderThan(std::chrono::seconds(1), now);
+        if (it->second.empty()) {
+            return std::nullopt;
+        }
+
         return core::computeStats(it->second);
     }
 
@@ -188,6 +202,10 @@ public:
         }
     }
 
+    [[nodiscard]] uint64_t getTotalPresentEvents() const noexcept {
+        return totalPresentEvents_.load(std::memory_order_relaxed);
+    }
+
 private:
     static VOID WINAPI EtwEventCallback(PEVENT_RECORD pEventRecord) {
         if (!pEventRecord || !pEventRecord->UserContext) {
@@ -210,6 +228,8 @@ private:
         if (!isPresentStartEvent(providerId, eventId)) {
             return;
         }
+
+        totalPresentEvents_.fetch_add(1, std::memory_order_relaxed);
 
         const uint64_t qpcTime = static_cast<uint64_t>(header.TimeStamp.QuadPart);
 
@@ -253,8 +273,8 @@ private:
         }
     }
 
-    size_t bufferCapacity_{2000};
-    std::chrono::nanoseconds bufferDuration_{std::chrono::seconds(10)};
+    size_t bufferCapacity_{1000};
+    std::chrono::nanoseconds bufferDuration_{std::chrono::seconds(1)};
 
     std::atomic<bool> running_{false};
     TRACEHANDLE sessionHandle_{0};
@@ -265,8 +285,9 @@ private:
     FrameTimeCalculator calculator_;
 
     mutable std::mutex buffersMutex_;
-    std::unordered_map<uint32_t, core::FrameTimeBuffer> processBuffers_;
-    std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> lastSeenTime_;
+    mutable std::unordered_map<uint32_t, core::FrameTimeBuffer> processBuffers_;
+    mutable std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> lastSeenTime_;
+    std::atomic<uint64_t> totalPresentEvents_{0};
 };
 
 EtwPresentCapture::EtwPresentCapture(size_t bufferCapacity, std::chrono::nanoseconds bufferDuration)
@@ -300,6 +321,10 @@ std::vector<uint32_t> EtwPresentCapture::getTrackedProcessIds() const {
 
 void EtwPresentCapture::pruneInactiveProcesses(std::chrono::nanoseconds maxIdleTime) {
     impl_->pruneInactiveProcesses(maxIdleTime);
+}
+
+uint64_t EtwPresentCapture::getTotalPresentEvents() const noexcept {
+    return impl_->getTotalPresentEvents();
 }
 
 }  // namespace perfoverlay::capture

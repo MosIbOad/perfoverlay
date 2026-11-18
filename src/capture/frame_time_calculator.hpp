@@ -20,7 +20,7 @@ public:
      * @param minDeltaMs Minimum valid frame time in ms. Consecutive events faster than
      *                   this are considered nested duplicates and ignored.
      */
-    explicit FrameTimeCalculator(uint64_t qpcFrequency, double minDeltaMs = 0.1);
+    explicit FrameTimeCalculator(uint64_t qpcFrequency, double minDeltaMs = 0.5);
 
     /**
      * @brief Processes a present event for a given process.

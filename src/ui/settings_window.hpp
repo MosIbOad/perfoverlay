@@ -11,6 +11,8 @@
 
 #include <functional>
 
+struct ImGuiContext;
+
 namespace perfoverlay::ui {
 
 /**
@@ -49,6 +51,7 @@ public:
     bool render();
 
     [[nodiscard]] bool isVisible() const noexcept { return isVisible_; }
+    [[nodiscard]] HWND getHwnd() const noexcept { return hwnd_; }
 
     /**
      * @brief Callback invoked whenever the user clicks "Save & Apply".
@@ -70,6 +73,7 @@ private:
     ID3D11DeviceContext* d3dContext_{nullptr};
     IDXGISwapChain* swapChain_{nullptr};
     ID3D11RenderTargetView* renderTargetView_{nullptr};
+    ::ImGuiContext* imguiContext_{nullptr};
 };
 
 }  // namespace perfoverlay::ui

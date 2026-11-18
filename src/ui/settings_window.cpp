@@ -16,6 +16,13 @@ constexpr int SETTINGS_HEIGHT = 580;
 SettingsWindow::SettingsWindow() = default;
 
 SettingsWindow::~SettingsWindow() {
+    if (imguiContext_) {
+        ImGui::SetCurrentContext(imguiContext_);
+        ImGui_ImplDX11_Shutdown();
+        ImGui_ImplWin32_Shutdown();
+        ImGui::DestroyContext(imguiContext_);
+        imguiContext_ = nullptr;
+    }
     cleanupD3D();
     if (hwnd_) {
         DestroyWindow(hwnd_);
@@ -24,11 +31,14 @@ SettingsWindow::~SettingsWindow() {
 }
 
 LRESULT CALLBACK SettingsWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    auto* window = reinterpret_cast<SettingsWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if (window && window->imguiContext_) {
+        ImGui::SetCurrentContext(window->imguiContext_);
+    }
+
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
         return true;
     }
-
-    auto* window = reinterpret_cast<SettingsWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
     switch (msg) {
         case WM_CLOSE:
@@ -70,7 +80,14 @@ bool SettingsWindow::init(HWND /*parentHwnd*/) {
         return false;
     }
 
-    // Initialize Dear ImGui for settings window
+    // Initialize dedicated Dear ImGui context for settings window
+    IMGUI_CHECKVERSION();
+    imguiContext_ = ImGui::CreateContext();
+    ImGui::SetCurrentContext(imguiContext_);
+    ImGuiIO& io = ImGui::GetIO();
+    io.IniFilename = nullptr;
+    ImGui::StyleColorsDark();
+
     ImGui_ImplWin32_Init(hwnd_);
     ImGui_ImplDX11_Init(d3dDevice_, d3dContext_);
 
@@ -176,6 +193,8 @@ bool SettingsWindow::render() {
     if (!isVisible_) {
         return true;
     }
+
+    ImGui::SetCurrentContext(imguiContext_);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();

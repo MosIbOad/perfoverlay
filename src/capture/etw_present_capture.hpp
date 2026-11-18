@@ -37,8 +37,8 @@ struct EtwStartResult {
  */
 class EtwPresentCapture : public core::IPresentCaptureProvider {
 public:
-    explicit EtwPresentCapture(size_t bufferCapacity = 2000,
-                               std::chrono::nanoseconds bufferDuration = std::chrono::seconds(10));
+    explicit EtwPresentCapture(size_t bufferCapacity = 1000,
+                               std::chrono::nanoseconds bufferDuration = std::chrono::seconds(1));
     ~EtwPresentCapture();
 
     EtwPresentCapture(const EtwPresentCapture&) = delete;
@@ -78,6 +78,11 @@ public:
      * @brief Cleans up memory buffers for processes that haven't emitted frames recently.
      */
     void pruneInactiveProcesses(std::chrono::nanoseconds maxIdleTime = std::chrono::seconds(30));
+
+    /**
+     * @brief Returns total present events processed across all processes (diagnostics).
+     */
+    [[nodiscard]] uint64_t getTotalPresentEvents() const noexcept;
 
 private:
     class Impl;

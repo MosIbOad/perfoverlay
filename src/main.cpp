@@ -15,27 +15,41 @@
 #include <shellapi.h>
 
 #include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
 
 int main(int argc, char* argv[]) {
+    // Attach to parent console if running from terminal
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE* fp = nullptr;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+        freopen_s(&fp, "CONIN$", "r", stdin);
+    }
+
     bool debugMode = false;
     bool headlessMode = false;
     bool openSettingsOnStart = false;
     int maxFrames = -1;  // -1 runs indefinitely
 
-    for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
-        if (arg == "--debug" || arg == "-d") {
-            debugMode = true;
-        } else if (arg == "--headless") {
-            headlessMode = true;
-        } else if (arg == "--settings") {
-            openSettingsOnStart = true;
-        } else if (arg == "-n" && i + 1 < argc) {
-            maxFrames = std::stoi(argv[++i]);
+    int nArgs = 0;
+    LPWSTR* szArglist = CommandLineToArgvW(GetCommandLineW(), &nArgs);
+    if (szArglist) {
+        for (int i = 1; i < nArgs; ++i) {
+            std::wstring warg = szArglist[i];
+            if (warg == L"--debug" || warg == L"-d") {
+                debugMode = true;
+            } else if (warg == L"--headless") {
+                headlessMode = true;
+            } else if (warg == L"--settings") {
+                openSettingsOnStart = true;
+            } else if (warg == L"-n" && i + 1 < nArgs) {
+                maxFrames = std::stoi(szArglist[++i]);
+            }
         }
+        LocalFree(szArglist);
     }
 
     // 0. Load configuration from %APPDATA%\perfoverlay\config.json
@@ -84,7 +98,7 @@ int main(int argc, char* argv[]) {
 
     if (!headlessMode) {
         if (!overlay.init()) {
-            std::cerr << "[Error] Failed to initialize DirectX 11 transparent overlay window.\n";
+            std::cerr << "[Error] Failed to initialize DirectX 11 transparent overlay window." << std::endl;
             return 1;
         }
 
@@ -171,11 +185,12 @@ int main(int argc, char* argv[]) {
                 lastDebugLogTime = now;
                 const auto snap = hub.getSnapshot();
 
-                std::cout << "[Debug Frame #" << frameCount << "] ";
+                std::cout << "[Debug Frame #" << frameCount << "] (Events: " << etwCapture.getTotalPresentEvents()
+                          << ") ";
                 if (snap.hasActiveGame && snap.activeGame.has_value()) {
                     std::cout << "Game: " << snap.activeGame->processName << " | ";
                     if (snap.frameStats.has_value() && snap.frameStats->avgFps > 0.0) {
-                        std::cout << "FPS: " << std::fixed << std::setprecision(1) << snap.frameStats->currentFps
+                        std::cout << "FPS: " << std::fixed << std::setprecision(1) << snap.frameStats->avgFps
                                   << " (1% Low: " << snap.frameStats->p1LowFps << ") | ";
                     } else {
                         std::cout << "FPS: N/A | ";

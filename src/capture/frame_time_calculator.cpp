@@ -33,6 +33,13 @@ std::optional<double> FrameTimeCalculator::processEvent(uint32_t processId, uint
         return std::nullopt;
     }
 
+    if (deltaMs > 1000.0) {
+        // Gap of > 1 second: process was idle, loading, paused, or minimized.
+        // Re-establish baseline timestamp without producing an erroneous FPS calculation.
+        it->second = qpcTimestamp;
+        return std::nullopt;
+    }
+
     it->second = qpcTimestamp;
     return deltaMs;
 }

@@ -86,7 +86,7 @@ bool OverlayWindow::initWindow() {
     // Extend DWM frame into entire client area to enable true per-pixel alpha blending
     MARGINS margins = {-1, -1, -1, -1};
     DwmExtendFrameIntoClientArea(hwnd_, &margins);
-    SetLayeredWindowAttributes(hwnd_, RGB(0, 0, 0), 255, LWA_ALPHA);
+    SetLayeredWindowAttributes(hwnd_, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
     // Register global hotkey F10
     RegisterHotKey(hwnd_, HOTKEY_ID_F10, 0, VK_F10);
@@ -171,7 +171,8 @@ void OverlayWindow::cleanupRenderTarget() {
 
 bool OverlayWindow::initImGui() {
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    imguiContext_ = ImGui::CreateContext();
+    ImGui::SetCurrentContext(imguiContext_);
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;  // Do not save settings to disk
 
@@ -188,10 +189,12 @@ bool OverlayWindow::initImGui() {
 }
 
 void OverlayWindow::cleanupImGui() {
-    if (ImGui::GetCurrentContext()) {
+    if (imguiContext_) {
+        ImGui::SetCurrentContext(imguiContext_);
         ImGui_ImplDX11_Shutdown();
         ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
+        ImGui::DestroyContext(imguiContext_);
+        imguiContext_ = nullptr;
     }
 }
 
@@ -258,7 +261,7 @@ void OverlayWindow::updateMonitorPosition(HWND targetHwnd) {
             }
 
             SetWindowPos(hwnd_, HWND_TOPMOST, newX, newY, config_.windowWidth, config_.windowHeight,
-                         SWP_NOACTIVATE | SWP_NOZORDER);
+                         SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
     }
 }
@@ -268,9 +271,14 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         return;
     }
 
+    // Ensure overlay window always stays topmost above borderless and fullscreen games
+    SetWindowPos(hwnd_, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
     // Auto-detect monitor of the active foreground window
     const HWND activeHwnd = GetForegroundWindow();
     updateMonitorPosition(activeHwnd);
+
+    ImGui::SetCurrentContext(imguiContext_);
 
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -311,9 +319,9 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
             if (snapshot.frameStats.has_value() && snapshot.frameStats->avgFps > 0.0) {
                 const auto& f = *snapshot.frameStats;
                 if (config_.metrics.showFps) {
-                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "FPS: %.1f", f.currentFps);
+                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "FPS: %.1f", f.avgFps);
                     ImGui::SameLine(140.0f);
-                    ImGui::TextDisabled("Avg: %.1f", f.avgFps);
+                    ImGui::TextDisabled("Cur: %.1f", f.currentFps);
                 }
 
                 if (config_.metrics.show1PercentLow || config_.metrics.show01PercentLow) {
@@ -457,10 +465,6 @@ void OverlayWindow::toggleVisibility() {
 }
 
 LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
-        return true;
-    }
-
     if (msg == WM_NCCREATE) {
         auto* cs = reinterpret_cast<CREATESTRUCTW*>(lParam);
         SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(cs->lpCreateParams));
@@ -468,6 +472,13 @@ LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     }
 
     auto* self = reinterpret_cast<OverlayWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if (self && self->imguiContext_) {
+        ImGui::SetCurrentContext(self->imguiContext_);
+    }
+
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
+        return true;
+    }
     if (self && self->messageHook_ && self->messageHook_(hwnd, msg, wParam, lParam)) {
         return 0;
     }

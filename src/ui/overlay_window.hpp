@@ -13,6 +13,7 @@ struct ID3D11Device;
 struct ID3D11DeviceContext;
 struct IDXGISwapChain;
 struct ID3D11RenderTargetView;
+struct ImGuiContext;
 
 namespace perfoverlay::ui {
 
@@ -103,6 +104,7 @@ private:
     ID3D11DeviceContext* d3dContext_{nullptr};
     IDXGISwapChain* swapChain_{nullptr};
     ID3D11RenderTargetView* renderTargetView_{nullptr};
+    ::ImGuiContext* imguiContext_{nullptr};
     std::function<bool(HWND, UINT, WPARAM, LPARAM)> messageHook_;
 };
 

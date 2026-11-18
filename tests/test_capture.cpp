@@ -64,6 +64,15 @@ TEST_CASE("FrameTimeCalculator - Out of order or zero delta handling", "[capture
     // Earlier timestamp (time went backwards / out of order)
     auto olderTime = calc.processEvent(pid, 49'999'000);
     REQUIRE_FALSE(olderTime.has_value());
+
+    // Gap larger than 1 second (10,000,001 ticks = 1000.0001 ms) re-establishes baseline
+    auto longPause = calc.processEvent(pid, 60'000'001);
+    REQUIRE_FALSE(longPause.has_value());
+
+    // Next normal frame after pause works properly
+    auto afterPause = calc.processEvent(pid, 60'166'667);
+    REQUIRE(afterPause.has_value());
+    REQUIRE(*afterPause == Approx(16.6667).epsilon(0.001));
 }
 
 TEST_CASE("FrameTimeCalculator - Multiple process isolation", "[capture][calculator]") {
@@ -103,6 +112,9 @@ TEST_CASE("ForegroundProcessTracker - Pure exclusion logic", "[capture][foregrou
     REQUIRE(ForegroundProcessTracker::isExcluded(2222, ownPid, "dwm.exe", "DWM"));
     REQUIRE(ForegroundProcessTracker::isExcluded(3333, ownPid, "SearchHost.exe", "Search"));
     REQUIRE(ForegroundProcessTracker::isExcluded(4444, ownPid, "TextInputHost.exe", ""));
+    REQUIRE(ForegroundProcessTracker::isExcluded(4445, ownPid, "cmd.exe", "Command Prompt"));
+    REQUIRE(ForegroundProcessTracker::isExcluded(4446, ownPid, "powershell.exe", "Windows PowerShell"));
+    REQUIRE(ForegroundProcessTracker::isExcluded(4447, ownPid, "Taskmgr.exe", "Task Manager"));
 
     // Empty or special shell titles
     REQUIRE(ForegroundProcessTracker::isExcluded(5555, ownPid, "app.exe", ""));
@@ -115,15 +127,15 @@ TEST_CASE("ForegroundProcessTracker - Pure exclusion logic", "[capture][foregrou
 }
 
 TEST_CASE("ETW Types - Present event classification", "[capture][etw_types]") {
-    // DXGI Present Start (42) & Stop (43)
+    // DXGI Present Start (42), Stop (43), MPO Start (55)
     REQUIRE(isPresentStartEvent(DXGI_PROVIDER_GUID, EVENT_ID_DXGI_PRESENT_START));
+    REQUIRE(isPresentStartEvent(DXGI_PROVIDER_GUID, EVENT_ID_DXGI_PRESENT_MPO_START));
     REQUIRE_FALSE(isPresentStartEvent(DXGI_PROVIDER_GUID, EVENT_ID_DXGI_PRESENT_STOP));
     REQUIRE(isDxgkOrDxgiPresentEvent(DXGI_PROVIDER_GUID, EVENT_ID_DXGI_PRESENT_START));
     REQUIRE(isDxgkOrDxgiPresentEvent(DXGI_PROVIDER_GUID, EVENT_ID_DXGI_PRESENT_STOP));
 
-    // DxgKrnl Present Start (184), Stop (185), History (171)
+    // DxgKrnl Present Start (184), Stop (185)
     REQUIRE(isPresentStartEvent(DXGKRNL_PROVIDER_GUID, EVENT_ID_DXGKRNL_PRESENT_START));
-    REQUIRE(isPresentStartEvent(DXGKRNL_PROVIDER_GUID, EVENT_ID_DXGKRNL_PRESENT_HISTORY_START));
     REQUIRE_FALSE(isPresentStartEvent(DXGKRNL_PROVIDER_GUID, EVENT_ID_DXGKRNL_PRESENT_STOP));
     REQUIRE(isDxgkOrDxgiPresentEvent(DXGKRNL_PROVIDER_GUID, EVENT_ID_DXGKRNL_PRESENT_START));
     REQUIRE(isDxgkOrDxgiPresentEvent(DXGKRNL_PROVIDER_GUID, EVENT_ID_DXGKRNL_PRESENT_STOP));
