@@ -25,8 +25,7 @@ public:
     using TimePoint = std::chrono::steady_clock::time_point;
     using Duration = std::chrono::nanoseconds;
 
-    explicit FrameTimeBuffer(size_t maxCapacity = 2000,
-                             Duration maxDuration = std::chrono::seconds(10));
+    explicit FrameTimeBuffer(size_t maxCapacity = 2000, Duration maxDuration = std::chrono::seconds(10));
 
     // Hot-path push using steady_clock::now()
     void push(double frameTimeMs);
@@ -47,8 +46,8 @@ public:
     [[nodiscard]] double operator[](size_t index) const;
     [[nodiscard]] const FrameEntry& entryAt(size_t index) const;
 
-    [[nodiscard]] double front() const; // Oldest frame time
-    [[nodiscard]] double back() const;  // Most recent frame time
+    [[nodiscard]] double front() const;  // Oldest frame time
+    [[nodiscard]] double back() const;   // Most recent frame time
 
     [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
     [[nodiscard]] size_t size() const noexcept { return size_; }
@@ -66,8 +65,8 @@ public:
 private:
     std::vector<FrameEntry> buffer_;
     size_t capacity_{0};
-    size_t head_{0}; // Next write position
-    size_t tail_{0}; // Oldest active entry
+    size_t head_{0};  // Next write position
+    size_t tail_{0};  // Oldest active entry
     size_t size_{0};
     Duration maxDuration_{std::chrono::seconds(10)};
 
@@ -82,8 +81,8 @@ struct FrameStats {
     double currentFps{0.0};
     double minFps{0.0};
     double maxFps{0.0};
-    double p1LowFps{0.0};        // 1% Low FPS (average frame time of worst 1% frames)
-    double p01LowFps{0.0};       // 0.1% Low FPS (average frame time of worst 0.1% frames)
+    double p1LowFps{0.0};   // 1% Low FPS (average frame time of worst 1% frames)
+    double p01LowFps{0.0};  // 0.1% Low FPS (average frame time of worst 0.1% frames)
     double avgFrameTimeMs{0.0};
     double p99FrameTimeMs{0.0};  // 99th percentile frame time
 };
@@ -118,4 +117,4 @@ struct FrameStats {
 FrameStats computeStats(const FrameTimeBuffer& buffer, std::vector<double>& scratch);
 FrameStats computeStats(const FrameTimeBuffer& buffer);
 
-} // namespace perfoverlay::core
+}  // namespace perfoverlay::core

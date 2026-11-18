@@ -20,9 +20,7 @@ public:
     void poll() override;
     void updateSnapshot(SensorSnapshot& snapshot) const override;
 
-    [[nodiscard]] std::optional<double> getCpuUsagePercent() const noexcept {
-        return cpuUsagePercent_;
-    }
+    [[nodiscard]] std::optional<double> getCpuUsagePercent() const noexcept { return cpuUsagePercent_; }
 
 private:
     uint64_t prevIdleTime_{0};
@@ -32,4 +30,4 @@ private:
     std::optional<double> cpuUsagePercent_;
 };
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

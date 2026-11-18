@@ -1,87 +1,176 @@
 # perfoverlay
 
-Lightweight, no-injection FPS and hardware overlay for Windows. Shows FPS, 1% / 0.1% lows, GPU/CPU usage and temps, and upscaler info (DLSS/FSR/XeSS) in a single exe. Built with C++20 and CMake.
+[![Build & Test](https://github.com/berkan/perfoverlay/actions/workflows/build.yml/badge.svg)](https://github.com/berkan/perfoverlay/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11%20x64-0078D6?logo=windows)](https://microsoft.com/windows)
+[![C++20](https://img.shields.io/badge/Language-C%2B%2B20-00599C?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/20)
 
-## Display Modes & Anti-Cheat Compatibility
+**perfoverlay**, Windows için geliştirilmiş, tek çalıştırılabilir (`single-executable`), harici ve **kesinlikle oyun içine DLL enjekte etmeyen / API hook atmayan** modern bir FPS ve donanım izleme aracıdır (MSI Afterburner + RivaTuner Statistics Server alternatifi).
 
-- **Windowed & Borderless Windowed (Pencereli / Çerçevesiz Pencereli)**: Tam olarak desteklenir. Overlay, şeffaf, tıklama geçiren (click-through) harici bir Direct3D 11 penceresi olarak oyunun üzerinde görüntülenir.
-- **Exclusive Fullscreen (Özel Tam Ekran)**: **Desteklenmez**. Windows DWM (Masaüstü Pencere Yöneticisi) mimarisi gereği, oyun sürecine DLL enjeksiyonu veya Direct3D hook yapılmadan özel tam ekran uygulamaların üzerine harici pencere çizilemez. `perfoverlay` kullanırken oyun içi görüntü modunuzu **Borderless Windowed (Çerçevesiz Pencereli)** veya **Windowed (Pencereli)** olarak ayarlayınız.
-- **Anti-Cheat Güvenliği**: Oyun sürecine ASLA DLL enjekte edilmez, API hook atılmaz ve oyunun Direct3D aygıtına dokunulmaz. FPS verisi harici ETW (PresentMon yaklaşımı) ile, donanım telemetrisi ise resmi API'lerle (AMD ADLX / Windows PDH) toplanır. Ban riski taşımaz.
-- **Kısayol Tuşu**: **F10** tuşuna basarak overlay penceresini dilediğiniz zaman anında gizleyebilir veya tekrar gösterebilirsiniz.
+C++20 standardı, Direct3D 11, Dear ImGui ve Windows ETW (Event Tracing for Windows) mimarisi üzerine inşa edilmiştir.
 
-## Upscaler & Frame Generation Detection
+---
 
-`perfoverlay`, aktif oyunun dosyalarında mevcut olan upscaler (DLSS, FSR, XeSS) ve Frame Generation kütüphanelerini tespit eder.
+## Ekran Görüntüsü (Preview)
 
-### Çalışma Prensibi & Anti-Cheat Güvenliği
-1. Aktif oyun penceresinin çalıştırılabilir dosya yolu `QueryFullProcessImageName` ile alınır. Bu işlem için yalnızca en düşük yetki seviyesi olan `PROCESS_QUERY_LIMITED_INFORMATION` talep edilir; anti-cheat sistemlerini tetikleyebilecek `PROCESS_VM_READ` veya `EnumProcessModules` gibi bellek okuma çağrıları **kesinlikle kullanılmaz**.
-2. Exe'nin bulunduğu klasör ve alt klasörleri derinlik sınırı ile taranır (`nvngx_dlss.dll`, `nvngx_dlssg.dll`, `amd_fidelityfx_*.dll`, `ffx_fsr2_api_*.dll`, `ffx_fsr3_api_*.dll`, `libxess.dll` vb.).
-3. Her oyun için tarama sonucu önbelleğe alınır; kare başına veya sürekli dosya sistemi okuması yapılmaz.
+```text
++-------------------------------------------------------------+
+| [Waiting for game...]                                       |
+| FPS: 142.5  |  FrameTime: 7.02 ms                           |
+| 1% Low: 104.2 FPS  |  0.1% Low: 78.5 FPS                    |
+| CPU: 24.3% (58°C)  |  GPU: 94.1% (64°C)                     |
+| VRAM: 9840 / 16384 MB  |  Clock: 2450 MHz  |  Power: 215 W  |
+| Upscaler: DLSS (FrameGen), FSR 3 [Detected in game files]   |
++-------------------------------------------------------------+
+```
+*(Görsel önizleme: Şeffaf, tıklama geçiren Direct3D 11 overlay penceresi oyunun üzerinde görünür)*
 
-### Bilinen Sınırlamalar
-- **Anlık Aktiflik Durumu**: Overlay arayüzünde "Detected in game files" dürüst etiketi kullanılır. Oyun sürecine hook atılmadığı ve belleği okunmadığı için, ilgili teknolojinin (özellikle Frame Generation veya DLSS/FSR) oyun içi grafik ayarları menüsünden o an **aktif edilip edilmediği bu sürümde tespit edilmemektedir**. Yalnızca oyunun ilgili upscaler kütüphanelerini barındırdığı doğrulanır.
+---
 
-## CPU Sıcaklığı & Güvenlik Mimarisi (CPU Temperature Architecture)
+## Özellik Tablosu (Feature Matrix)
 
-Windows ortamında CPU çekirdek ve paket sıcaklıklarına kullanıcı modundan (Ring 3) doğrudan resmi bir Win32 API ile erişilemez; MSR (Model-Specific Register) veya SMBus/EC kayıtlarını okumak için bir **çekirdek modu sürücüsü (Kernel Driver)** (örn. WinRing0, InpOutx64, ATSIR vb.) gerekir.
+| Özellik / Metrik | Açıklama | Kaynak & Yöntem | Anti-Cheat Etkisi |
+| :--- | :--- | :--- | :--- |
+| **FPS & Frame Time** | Anlık kare hızı ve milisaniye cinsinden gecikme | ETW (Microsoft-Windows-DxgKrnl / DXGI) | **Sıfır Enjeksiyon** (Dışarıdan izleme) |
+| **1% & 0.1% Low FPS** | En kötü %1 ve %0.1'lik dilimin ortalama FPS karşılığı | `FrameTimeBuffer` matematiksel kuyruk | Harici matematiksel hesaplama |
+| **GPU Kullanımı & Sıcaklık** | GPU % yükü ve çekirdek sıcaklığı (°C) | AMD ADLX SDK (Yedek: Windows PDH) | Resmi donanım API'si |
+| **VRAM, Saat Hızı & Güç** | Kullanılan/Toplam VRAM, MHz ve Watt | AMD ADLX SDK | Resmi donanım API'si |
+| **CPU Kullanımı** | Toplam işlemci yükü (%) | Windows Performance Data Helper (PDH) | Resmi Windows API'si |
+| **CPU Sıcaklığı** | İşlemci paket sıcaklığı (°C) | LibreHardwareMonitor Web Server (`localhost:8085`) | **Sürücüsüz** (Kernel driver yok) |
+| **Upscaler Tespiti** | DLSS, DLSS-G, FSR ve XeSS varlığı | Pasif oyun dizini taraması | Yalnızca dosya sistemi okuması |
+| **Overlay Penceresi** | Şeffaf, always-on-top, click-through UI | Win32 + D3D11 + DWM + ImGui | Oyun belleğine dokunmaz |
+| **Sistem Tepsisi & Ayarlar** | Tepsi ikonu ve etkileşimli ayarlar penceresi | Windows Shell Notify + ImGui Dialog | Bağımsız Win32 penceresi |
 
-### Neden perfoverlay Kendi Kernel Sürücüsünü Yüklemez?
-1. **Anti-Cheat Güvenliği**: Popüler ring-0 anti-cheat sistemleri (Riot Vanguard, Easy Anti-Cheat, BattlEye, Ricochet vb.), bilinen güvenlik açıkları barındıran üçüncü taraf donanım sürücülerini tespit ettiği anda oyunu sonlandırır veya hesabı yasaklar (ban).
-2. **Sistem Güvenliği & Çekirdek Bütünlüğü**: Eski/güvensiz kernel sürücüleri modern Windows 11 HVCI (Bellek Bütünlüğü / Memory Integrity) tarafından engellenir ve mavi ekran (BSOD) riskleri taşır.
-3. `perfoverlay`, anti-cheat uyumluluğunu ve sistem kararlılığını birinci öncelik olarak kabul eder; bu yüzden kendisi **asla kernel sürücüsü yüklemez**.
+---
 
-### Harici LibreHardwareMonitor Entegrasyonu
-Kullanıcılar CPU sıcaklığını takip etmek istediklerinde, açık kaynaklı [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) yazılımının yerel Remote Web Server özelliğini kullanabilir:
+## "Zero-Injection" ve Anti-Cheat Güvenliği
 
-#### Kurulum Adımları:
-1. [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases) uygulamasını indirin ve yönetici olarak çalıştırın.
-2. Üst menüden **Options -> Remote Web Server -> Run** seçeneğini işaretleyin (varsayılan port: `8085`).
-3. `perfoverlay` otomatik olarak `http://localhost:8085/data.json` uç noktasından CPU paket sıcaklığını okur ve overlay'de gösterir.
-4. LibreHardwareMonitor çalıştırılmadığında veya sunucu kapalı olduğunda, overlay CPU sıcaklığını sessizce `Temp: N/A` olarak gösterir; hiçbir performans kaybı veya takılma yaşanmaz.
+> [!IMPORTANT]
+> **Dürüst Bilgilendirme**: `perfoverlay`, oyun süreçlerine kod enjekte etmeyerek ban riskini geleneksel araçlara (RTSS, SpecialK, ReShade vb.) kıyasla **dramatik şekilde azaltır**. Ancak, hiçbir üçüncü taraf yazılım çekirdek düzeyindeki (Ring-0 / Kernel) anti-cheat sistemlerine karşı **%100 mutlak garanti veremez**. Yazılımı kendi sorumluluğunuzda kullanınız.
 
-## Yapılandırma & Sistem Tepsisi (Configuration & System Tray)
+### Neden Çok Daha Güvenli?
+1. **DLL Enjeksiyonu YOK**: Oyunun adres alanına (Virtual Address Space) hiçbir yabancı DLL enjekte edilmez (`CreateRemoteThread`, `SetWindowsHookEx` veya DLL injection yöntemleri ASLA kullanılmaz).
+2. **API Hooking YOK**: Oyunun çağırdığı `Present`, `Present1`, `ResizeBuffers` gibi DirectX veya Vulkan fonksiyon tablolarına (VTable / IAT) kanca takılmaz.
+3. **ETW (Event Tracing for Windows) Yaklaşımı**: Kare süreleri, Intel PresentMon ve Windows Performance Analyzer'ın kullandığı resmi Windows çekirdek ETW olayları (`Microsoft-Windows-DxgKrnl` ve `Microsoft-Windows-DXGI`) dinlenerek tamamen süreç dışından (out-of-process) toplanır.
+4. **En Düşük İşlem Yetkisi**: Aktif oyunun exe yolu taranırken yalnızca `PROCESS_QUERY_LIMITED_INFORMATION` talep edilir; bellek okuma (`PROCESS_VM_READ`) yetkisi istenmez.
+5. **Kernel Sürücüsü Yüklemez**: Anti-cheat sistemlerinin ve Windows 11 Bellek Bütünlüğü'nün (HVCI) kara listeye aldığı güvensiz çekirdek sürücüleri (WinRing0 vb.) projede kesinlikle yer almaz.
 
-Tüm kullanıcı tercihleri `%APPDATA%\perfoverlay\config.json` dosyasında saklanır.
+---
 
-### Ayar Alanları
-- **Konum ve Boyut**: `corner` ("TopLeft", "TopRight", "BottomLeft", "BottomRight"), `offsetX`, `offsetY`, `windowWidth`, `windowHeight`.
-- **Görsel Tercihler**: `backgroundAlpha` (0.05 - 1.0 arası saydamlık), `fontScale`.
-- **Görünecek Metrikler (`metrics`)**: `showFps`, `show1PercentLow`, `show01PercentLow`, `showFrameTime`, `showCpuUsage`, `showCpuTemp`, `showGpuUsage`, `showGpuTemp`, `showVram`, `showGpuClock`, `showGpuPower`, `showUpscaler` (her biri `true`/`false`).
-- **Kısayol ve Sağlayıcı**: `toggleHotkey` (varsayılan "F10"), `cpuTempProvider` ("auto", "librehardwaremonitor", "disabled").
+## Kısayollar ve Kullanım
 
-### Bozuk/Eksik Dosya Koruması
-- `config.json` mevcut değilse uygulama ilk çalıştığında varsayılan ayarlarla dosyayı otomatik olarak oluşturur.
-- Dosya bozulursa veya geçersiz JSON syntax'ı içerirse, çökme yaşanmaz; bozuk dosya `config.json.bak` olarak yedeklenir ve yerine temiz varsayılan yapılandırma yazılarak uygulama sorunsuz başlatılır.
+| İşlem | Yöntem |
+| :--- | :--- |
+| **Overlay Aç / Gizle** | Global `F10` kısayol tuşu |
+| **Sistem Tepsisi Menüsü** | Görev çubuğundaki bildirim simgesine sağ tık: *Göster/Gizle*, *Ayarlar...*, *Ayarlar dosyasını aç*, *Çıkış* |
+| **Etkileşimli Ayarlar** | Tepsi simgesinden "Ayarlar..." veya CLI: `perfoverlay.exe --settings` |
+| **Konsol Teşhis Modu** | Komut isteminde: `perfoverlay.exe --debug` |
+| **Penceresiz (Headless) Mod** | Otomasyon / testler için: `perfoverlay.exe --headless` |
+| **Belirli Frame Sonra Çıkış** | `perfoverlay.exe -n 120` (120 frame sonra otomatik kapanır) |
 
-### Sistem Tepsisi (Tray Icon) & Ayarlar Penceresi
-- Görev çubuğu bildirim alanındaki simgeye sağ tıklandığında:
-  - **Göster / Gizle**: Overlay penceresini açar/kapatır.
-  - **Ayarlar...**: Overlay click-through olduğu için fare tıklamalarını arkadaki oyuna iletir; bu nedenle ayarları rahatça değiştirebilmeniz için ImGui tabanlı, etkileşimli ayrı bir ayarlar penceresi açılır.
-  - **Ayarlar dosyasını aç**: `config.json` dosyasını sistemin varsayılan metin editörüyle açar.
-  - **Çıkış**: Uygulamayı kapatır.
-- Doğrudan ayarlar penceresiyle başlatmak için: `perfoverlay.exe --settings` kullanılabilir.
+---
 
-## Metrics & 1% / 0.1% Low Methodology
+## Bilinen Sınırlamalar
 
-`perfoverlay` implements the **Average of the Worst 1% / 0.1%** (Expected Shortfall / 1% Average Low) method for reporting 1% Low and 0.1% Low FPS.
+1. **Exclusive Fullscreen (Özel Tam Ekran) Desteklenmez**:
+   - `perfoverlay`, oyunun grafik hattını kırmak yerine Windows Masaüstü Pencere Yöneticisi (DWM) kompozisyonunu kullanır.
+   - Bu nedenle oyunlarınızı **Borderless Windowed (Çerçevesiz Pencereli)** veya **Windowed (Pencereli)** modunda çalıştırmanız gereklidir. Exclusive Fullscreen modundaki oyunlar DWM katmanını baypas ettiği için üzerlerine harici pencere çizilemez.
+2. **Frame Generation ve Upscaler Anlık Durumu**:
+   - Oyun klasöründeki kütüphaneleri tarayarak `DLSS`, `DLSS FrameGen`, `FSR` veya `XeSS` kütüphanelerinin varlığını doğrular.
+   - Arayüzde **"Detected in game files"** etiketi gösterilir; çünkü oyun sürecinin belleği okunmadığı için teknolojinin oyun menüsünden anlık olarak açılıp açılmadığı bu sürümde tespit edilmez.
+3. **CPU Sıcaklığı Harici Araç Gereksinimi**:
+   - Güvenlik ve anti-cheat ban risklerini önlemek adına `perfoverlay` kendi bünyesinde kernel driver yüklemez.
+   - CPU sıcaklığını görmek için açık kaynaklı **LibreHardwareMonitor** uygulamasının "Remote Web Server" özelliği (`http://localhost:8085`) kullanılır. Sunucu kapalıysa değer sessizce `N/A` olarak gösterilir.
 
-### Calculation Method
+---
 
-1. All frame times in the rolling observation window are sorted in ascending order.
-2. The slowest `ceil(N * 0.01)` frames (for 1% low) and `ceil(N * 0.001)` frames (for 0.1% low) are isolated.
-3. We compute the arithmetic mean of these worst frame times ($T_{\text{worst\_avg}}$).
-4. The low FPS is calculated as:
-   $$\text{Low FPS} = \frac{1000.0}{T_{\text{worst\_avg}}}$$
+## Yapılandırma (`config.json`)
 
-### Rationale: Average of Worst 1% vs. Quantile Threshold
+Kullanıcı tercihleri `%APPDATA%\perfoverlay\config.json` dosyasında saklanır:
 
-There are two primary ways to define 1% Low in game performance analysis:
+```json
+{
+  "overlay": {
+    "corner": "TopLeft",
+    "offsetX": 20,
+    "offsetY": 20,
+    "backgroundOpacity": 0.35,
+    "fontSizeScale": 1.0
+  },
+  "metrics": {
+    "showFps": true,
+    "showFrameTime": true,
+    "showOnePercentLow": true,
+    "showZeroPointOnePercentLow": true,
+    "showCpuUsage": true,
+    "showCpuTemp": true,
+    "showGpuUsage": true,
+    "showGpuTemp": true,
+    "showVram": true,
+    "showGpuClock": true,
+    "showGpuPower": true,
+    "showUpscaler": true
+  },
+  "general": {
+    "toggleHotkey": "F10",
+    "fpsUpdateIntervalMs": 250,
+    "sensorUpdateIntervalMs": 500,
+    "cpuTempProvider": "auto"
+  }
+}
+```
 
-1. **Quantile Threshold (e.g., 99th Percentile Cutoff)**:
-   - Takes only the single boundary value between the top 99% and bottom 1% frames ($1000 / T_{99}$).
-   - **Drawback**: It is completely blind to the severity of frame pacing anomalies beyond the threshold. A mild 25 ms hiccup and a severe 500 ms stutter freeze produce identical 99th percentile numbers if their rank is the same.
+- **Bozuk Dosya Koruması**: Dosya bozulursa veya JSON sözdizimi geçersizse çökmek yerine `config.json.corrupted_<zaman>.bak` adıyla yedeklenir ve otomatik olarak temiz varsayılan ayarlara dönülür.
 
-2. **Average of the Worst 1% (Implemented in `perfoverlay`)**:
-   - Computes the mean frame time of all frames in the worst 1% tail.
-   - **Advantage**: Directly penalizes long and severe stutters proportionally to their actual duration.
-   - **Industry Standard**: Widely adopted by leading benchmark authorities (Gamers Nexus, Digital Foundry, PresentMon) as the most faithful representation of player-perceived stutter and smoothness.
+---
+
+## Sorun Giderme (Troubleshooting)
+
+### 1. ETW Yetki Hatası (Win32 Error 5 / Access Denied)
+Gerçek zamanlı FPS ölçümü Windows ETW çekirdek oturumu gerektirir:
+- **Çözüm 1**: `perfoverlay.exe` uygulamasını **Yönetici Olarak Çalıştırın** (Run as Administrator).
+- **Çözüm 2 (Yöneticisiz Kullanım)**: Kullanıcı hesabınızı kalıcı olarak `Performance Log Users` grubuna ekleyin:
+  ```cmd
+  net localgroup "Performance Log Users" "%USERNAME%" /add
+  ```
+  *(Komutu bir defaya mahsus yönetici komut satırında çalıştırın, ardından oturumunuzu kapatıp tekrar açın).*
+
+### 2. GPU Telemetrisi Görünmüyor veya `N/A`
+- **AMD Radeon GPU'lar**: AMD Software: Adrenalin Edition sürücüsü kurulu olmalıdır (`amdadlx64.dll` otomatik yüklenir).
+- **NVIDIA / Intel GPU'lar**: AMD ADLX bulunamadığında Windows PDH sayaçları devreye girer ve toplam GPU kullanım oranını raporlar.
+
+### 3. CPU Sıcaklığı `N/A` Görünüyor
+- [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases) uygulamasını açın.
+- Üst menüden `Options -> Remote Web Server -> Run` seçeneğini aktif edin (Port: `8085`).
+
+---
+
+## Derleme Talimatları (Building from Source)
+
+### Gereksinimler
+- Windows 10/11 x64
+- Visual Studio 2022 veya 2025/2026 (Desktop Development with C++ bileşeni ile)
+- CMake 3.25+
+- vcpkg paket yöneticisi (`VCPKG_ROOT` ortam değişkeni tanımlı)
+
+### Derleme Adımları
+```powershell
+# 1. Depoyu klonlayın
+git clone https://github.com/berkan/perfoverlay.git
+cd perfoverlay
+
+# 2. Release konfigürasyonu ve derleme (Statik CRT /MT ile tek exe)
+cmake --preset windows-release
+cmake --build --preset windows-release
+
+# 3. Birim testleri çalıştırın (Catch2)
+ctest --preset windows-release --output-on-failure
+```
+
+Çalıştırılabilir tek dosya `build/windows-release/Release/perfoverlay.exe` altında oluşturulur.
+
+---
+
+## Lisans
+
+Bu proje [MIT Lisansı](LICENSE) altında sunulmaktadır.

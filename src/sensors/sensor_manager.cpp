@@ -1,7 +1,7 @@
 #include "sensors/sensor_manager.hpp"
+#include "sensors/amd_gpu_sensor.hpp"
 #include "sensors/cpu_sensor.hpp"
 #include "sensors/cpu_temp_sensor.hpp"
-#include "sensors/amd_gpu_sensor.hpp"
 #include "sensors/gpu_sensor_fallback.hpp"
 
 #include <chrono>
@@ -10,8 +10,7 @@ namespace perfoverlay::sensors {
 
 SensorManager::SensorManager() = default;
 
-SensorManager::SensorManager(std::vector<std::unique_ptr<ISensor>> sensors)
-    : sensors_(std::move(sensors)) {}
+SensorManager::SensorManager(std::vector<std::unique_ptr<ISensor>> sensors) : sensors_(std::move(sensors)) {}
 
 SensorManager::~SensorManager() {
     stop();
@@ -67,9 +66,7 @@ void SensorManager::start() {
             pollOnce();
 
             std::unique_lock lock(cvMutex_);
-            cv_.wait_for(lock, std::chrono::milliseconds(500), [&stopToken] {
-                return stopToken.stop_requested();
-            });
+            cv_.wait_for(lock, std::chrono::milliseconds(500), [&stopToken] { return stopToken.stop_requested(); });
         }
     });
 }
@@ -104,4 +101,4 @@ SensorSnapshot SensorManager::getSnapshot() const {
     return snapshot_;
 }
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

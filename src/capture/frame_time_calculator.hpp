@@ -44,4 +44,4 @@ private:
     std::unordered_map<uint32_t, uint64_t> lastTimestamps_;
 };
 
-} // namespace perfoverlay::capture
+}  // namespace perfoverlay::capture

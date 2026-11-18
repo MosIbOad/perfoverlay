@@ -28,7 +28,7 @@ TEST_CASE("FrameTimeBuffer - Empty buffer statistics", "[core][stats]") {
 
 TEST_CASE("FrameTimeBuffer - Single sample statistics", "[core][stats]") {
     FrameTimeBuffer buffer(100);
-    buffer.push(16.0); // 16.0 ms = 62.5 FPS
+    buffer.push(16.0);  // 16.0 ms = 62.5 FPS
 
     REQUIRE_FALSE(buffer.empty());
     REQUIRE(buffer.size() == 1);
@@ -49,7 +49,7 @@ TEST_CASE("FrameTimeBuffer - Single sample statistics", "[core][stats]") {
 
 TEST_CASE("FrameTimeBuffer - Constant 60 FPS stream", "[core][stats]") {
     FrameTimeBuffer buffer(200);
-    constexpr double frame60Ms = 1000.0 / 60.0; // 16.666666... ms
+    constexpr double frame60Ms = 1000.0 / 60.0;  // 16.666666... ms
 
     for (int i = 0; i < 120; ++i) {
         buffer.push(frame60Ms);
@@ -70,10 +70,10 @@ TEST_CASE("FrameTimeBuffer - Constant 60 FPS stream", "[core][stats]") {
 }
 
 TEST_CASE("FrameTimeBuffer - Capacity overflow drops oldest entries", "[core][buffer]") {
-    FrameTimeBuffer buffer(5); // Capacity 5
+    FrameTimeBuffer buffer(5);  // Capacity 5
 
     for (int i = 1; i <= 5; ++i) {
-        buffer.push(static_cast<double>(i * 10)); // 10, 20, 30, 40, 50
+        buffer.push(static_cast<double>(i * 10));  // 10, 20, 30, 40, 50
     }
 
     REQUIRE(buffer.size() == 5);
@@ -85,7 +85,7 @@ TEST_CASE("FrameTimeBuffer - Capacity overflow drops oldest entries", "[core][bu
     buffer.push(70.0);
 
     REQUIRE(buffer.size() == 5);
-    REQUIRE(buffer.front() == 30.0); // 10 and 20 were dropped
+    REQUIRE(buffer.front() == 30.0);  // 10 and 20 were dropped
     REQUIRE(buffer.back() == 70.0);
 
     REQUIRE(buffer[0] == 30.0);
@@ -97,7 +97,7 @@ TEST_CASE("FrameTimeBuffer - Capacity overflow drops oldest entries", "[core][bu
 
 TEST_CASE("FrameTimeBuffer - Timestamp-based pruning", "[core][buffer]") {
     using namespace std::chrono_literals;
-    FrameTimeBuffer buffer(100, 2s); // Max 2 seconds window
+    FrameTimeBuffer buffer(100, 2s);  // Max 2 seconds window
 
     const auto t0 = std::chrono::steady_clock::time_point{100s};
 
@@ -175,7 +175,7 @@ TEST_CASE("FrameStats - Hand-calculated 1% Low and 0.1% Low with distinct values
     for (int i = 0; i < 10; ++i) {
         buffer.push(25.0);
     }
-    buffer.push(50.0); // Latest frame is the 50ms spike
+    buffer.push(50.0);  // Latest frame is the 50ms spike
 
     REQUIRE(buffer.size() == 1000);
 

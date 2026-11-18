@@ -8,8 +8,7 @@
 namespace perfoverlay::core {
 
 FrameTimeBuffer::FrameTimeBuffer(size_t maxCapacity, Duration maxDuration)
-    : capacity_(std::max<size_t>(1, maxCapacity)),
-      maxDuration_(maxDuration) {
+    : capacity_(std::max<size_t>(1, maxCapacity)), maxDuration_(maxDuration) {
     buffer_.resize(capacity_);
 }
 
@@ -199,4 +198,4 @@ FrameStats computeStats(const FrameTimeBuffer& buffer) {
     return computeStats(buffer, scratch);
 }
 
-} // namespace perfoverlay::core
+}  // namespace perfoverlay::core

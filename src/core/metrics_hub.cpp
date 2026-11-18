@@ -2,15 +2,10 @@
 
 namespace perfoverlay::core {
 
-MetricsHub::MetricsHub(
-    const IForegroundProcessProvider* fgProvider,
-    const IPresentCaptureProvider* captureProvider,
-    const ISensorSnapshotProvider* sensorProvider,
-    IUpscalerProvider* upscalerProvider
-) : fgProvider_(fgProvider),
-    captureProvider_(captureProvider),
-    sensorProvider_(sensorProvider),
-    upscalerProvider_(upscalerProvider) {}
+MetricsHub::MetricsHub(const IForegroundProcessProvider* fgProvider, const IPresentCaptureProvider* captureProvider,
+                       const ISensorSnapshotProvider* sensorProvider, IUpscalerProvider* upscalerProvider)
+    : fgProvider_(fgProvider), captureProvider_(captureProvider), sensorProvider_(sensorProvider),
+      upscalerProvider_(upscalerProvider) {}
 
 MetricsHub::~MetricsHub() {
     stop();
@@ -28,9 +23,8 @@ void MetricsHub::start() {
         size_t tickCount = 0;
         while (!stopToken.stop_requested()) {
             std::unique_lock lock(cvMutex_);
-            const bool stopped = cv_.wait_for(lock, std::chrono::milliseconds(250), [&stopToken] {
-                return stopToken.stop_requested();
-            });
+            const bool stopped =
+                cv_.wait_for(lock, std::chrono::milliseconds(250), [&stopToken] { return stopToken.stop_requested(); });
 
             if (stopped || stopToken.stop_requested()) {
                 break;
@@ -79,10 +73,7 @@ void MetricsHub::pollOnce(bool pollSensors) {
             }
 
             if (upscalerProvider_) {
-                next.upscaler = upscalerProvider_->getUpscalerInfo(
-                    activeFg->processId,
-                    activeFg->executablePath
-                );
+                next.upscaler = upscalerProvider_->getUpscalerInfo(activeFg->processId, activeFg->executablePath);
             } else {
                 next.upscaler = std::nullopt;
             }
@@ -115,4 +106,4 @@ MetricsSnapshot MetricsHub::getSnapshot() const {
     return snapshot_;
 }
 
-} // namespace perfoverlay::core
+}  // namespace perfoverlay::core

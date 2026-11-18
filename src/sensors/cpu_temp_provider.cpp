@@ -18,9 +18,8 @@ namespace {
 
 std::string toLower(std::string_view str) {
     std::string result(str);
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return result;
 }
 
@@ -63,7 +62,7 @@ std::optional<double> parseTemperatureString(std::string_view valStr) {
 }
 
 struct TempCandidate {
-    int priority{0}; // 1 = highest (CPU Package), 5 = lowest
+    int priority{0};  // 1 = highest (CPU Package), 5 = lowest
     double value{0.0};
 };
 
@@ -87,11 +86,9 @@ void findCpuTempInNode(const nlohmann::json& node, bool isUnderCpu, std::vector<
     const std::string lowerText = toLower(text);
     const std::string lowerId = toLower(sensorId);
 
-    const bool currentIsCpu = isUnderCpu ||
-                              lowerId.find("cpu") != std::string::npos ||
-                              lowerText.find("cpu") != std::string::npos ||
-                              lowerText.find("ryzen") != std::string::npos ||
-                              lowerText.find("intel") != std::string::npos;
+    const bool currentIsCpu =
+        isUnderCpu || lowerId.find("cpu") != std::string::npos || lowerText.find("cpu") != std::string::npos ||
+        lowerText.find("ryzen") != std::string::npos || lowerText.find("intel") != std::string::npos;
 
     // Check value if present
     std::string valStr;
@@ -120,8 +117,8 @@ void findCpuTempInNode(const nlohmann::json& node, bool isUnderCpu, std::vector<
     }
 
     // Traverse children
-    const char* childrenKey = node.contains("Children") ? "Children"
-                            : (node.contains("children") ? "children" : nullptr);
+    const char* childrenKey =
+        node.contains("Children") ? "Children" : (node.contains("children") ? "children" : nullptr);
 
     if (childrenKey && node[childrenKey].is_array()) {
         for (const auto& child : node[childrenKey]) {
@@ -130,21 +127,12 @@ void findCpuTempInNode(const nlohmann::json& node, bool isUnderCpu, std::vector<
     }
 }
 
-} // namespace
+}  // namespace
 
-std::optional<std::string> WinHttpClient::get(
-    std::string_view host,
-    uint16_t port,
-    std::string_view path,
-    std::chrono::milliseconds timeout
-) {
-    HINTERNET hSession = WinHttpOpen(
-        L"perfoverlay/1.0",
-        WINHTTP_ACCESS_TYPE_NO_PROXY,
-        WINHTTP_NO_PROXY_NAME,
-        WINHTTP_NO_PROXY_BYPASS,
-        0
-    );
+std::optional<std::string> WinHttpClient::get(std::string_view host, uint16_t port, std::string_view path,
+                                              std::chrono::milliseconds timeout) {
+    HINTERNET hSession = WinHttpOpen(L"perfoverlay/1.0", WINHTTP_ACCESS_TYPE_NO_PROXY, WINHTTP_NO_PROXY_NAME,
+                                     WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) {
         return std::nullopt;
     }
@@ -160,30 +148,17 @@ std::optional<std::string> WinHttpClient::get(
     }
 
     const std::wstring wPath(path.begin(), path.end());
-    HINTERNET hRequest = WinHttpOpenRequest(
-        hConnect,
-        L"GET",
-        wPath.c_str(),
-        nullptr,
-        WINHTTP_NO_REFERER,
-        WINHTTP_DEFAULT_ACCEPT_TYPES,
-        0 // Standard HTTP
-    );
+    HINTERNET hRequest =
+        WinHttpOpenRequest(hConnect, L"GET", wPath.c_str(), nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
+                           0  // Standard HTTP
+        );
     if (!hRequest) {
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
         return std::nullopt;
     }
 
-    BOOL bResults = WinHttpSendRequest(
-        hRequest,
-        WINHTTP_NO_ADDITIONAL_HEADERS,
-        0,
-        WINHTTP_NO_REQUEST_DATA,
-        0,
-        0,
-        0
-    );
+    BOOL bResults = WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0);
 
     if (bResults) {
         bResults = WinHttpReceiveResponse(hRequest, nullptr);
@@ -233,9 +208,8 @@ std::optional<double> parseLhmCpuTempJson(const std::string& jsonString) {
             return std::nullopt;
         }
 
-        std::sort(candidates.begin(), candidates.end(), [](const auto& a, const auto& b) {
-            return a.priority < b.priority;
-        });
+        std::sort(candidates.begin(), candidates.end(),
+                  [](const auto& a, const auto& b) { return a.priority < b.priority; });
 
         return candidates.front().value;
     } catch (...) {
@@ -243,15 +217,9 @@ std::optional<double> parseLhmCpuTempJson(const std::string& jsonString) {
     }
 }
 
-LibreHardwareMonitorHttpProvider::LibreHardwareMonitorHttpProvider(
-    std::shared_ptr<IHttpClient> httpClient,
-    std::string host,
-    uint16_t port,
-    std::string path
-) : httpClient_(std::move(httpClient)),
-    host_(std::move(host)),
-    port_(port),
-    path_(std::move(path)) {}
+LibreHardwareMonitorHttpProvider::LibreHardwareMonitorHttpProvider(std::shared_ptr<IHttpClient> httpClient,
+                                                                   std::string host, uint16_t port, std::string path)
+    : httpClient_(std::move(httpClient)), host_(std::move(host)), port_(port), path_(std::move(path)) {}
 
 std::optional<double> LibreHardwareMonitorHttpProvider::getCpuTempC() {
     if (!httpClient_) {
@@ -266,22 +234,20 @@ std::optional<double> LibreHardwareMonitorHttpProvider::getCpuTempC() {
     return parseLhmCpuTempJson(*response);
 }
 
-std::unique_ptr<ICpuTempProvider> createCpuTempProvider(
-    CpuTempProviderType type,
-    std::shared_ptr<IHttpClient> httpClient
-) {
+std::unique_ptr<ICpuTempProvider> createCpuTempProvider(CpuTempProviderType type,
+                                                        std::shared_ptr<IHttpClient> httpClient) {
     switch (type) {
-    case CpuTempProviderType::Disabled:
-        return std::make_unique<NullCpuTempProvider>();
+        case CpuTempProviderType::Disabled:
+            return std::make_unique<NullCpuTempProvider>();
 
-    case CpuTempProviderType::LibreHardwareMonitor:
-    case CpuTempProviderType::Auto:
-    default:
-        if (httpClient) {
-            return std::make_unique<LibreHardwareMonitorHttpProvider>(std::move(httpClient));
-        }
-        return std::make_unique<LibreHardwareMonitorHttpProvider>();
+        case CpuTempProviderType::LibreHardwareMonitor:
+        case CpuTempProviderType::Auto:
+        default:
+            if (httpClient) {
+                return std::make_unique<LibreHardwareMonitorHttpProvider>(std::move(httpClient));
+            }
+            return std::make_unique<LibreHardwareMonitorHttpProvider>();
     }
 }
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

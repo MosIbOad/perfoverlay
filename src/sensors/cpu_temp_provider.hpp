@@ -31,9 +31,7 @@ class NullCpuTempProvider : public ICpuTempProvider {
 public:
     ~NullCpuTempProvider() override = default;
 
-    [[nodiscard]] std::optional<double> getCpuTempC() override {
-        return std::nullopt;
-    }
+    [[nodiscard]] std::optional<double> getCpuTempC() override { return std::nullopt; }
 };
 
 /**
@@ -47,12 +45,8 @@ public:
      * @brief Performs a synchronous HTTP GET request with a strict timeout.
      * @return Response body as string on success, std::nullopt on timeout or error.
      */
-    [[nodiscard]] virtual std::optional<std::string> get(
-        std::string_view host,
-        uint16_t port,
-        std::string_view path,
-        std::chrono::milliseconds timeout
-    ) = 0;
+    [[nodiscard]] virtual std::optional<std::string> get(std::string_view host, uint16_t port, std::string_view path,
+                                                         std::chrono::milliseconds timeout) = 0;
 };
 
 /**
@@ -64,12 +58,9 @@ public:
     WinHttpClient() = default;
     ~WinHttpClient() override = default;
 
-    [[nodiscard]] std::optional<std::string> get(
-        std::string_view host,
-        uint16_t port,
-        std::string_view path,
-        std::chrono::milliseconds timeout = std::chrono::milliseconds(300)
-    ) override;
+    [[nodiscard]] std::optional<std::string>
+    get(std::string_view host, uint16_t port, std::string_view path,
+        std::chrono::milliseconds timeout = std::chrono::milliseconds(300)) override;
 };
 
 /**
@@ -84,11 +75,8 @@ public:
 class LibreHardwareMonitorHttpProvider : public ICpuTempProvider {
 public:
     explicit LibreHardwareMonitorHttpProvider(
-        std::shared_ptr<IHttpClient> httpClient = std::make_shared<WinHttpClient>(),
-        std::string host = "localhost",
-        uint16_t port = 8085,
-        std::string path = "/data.json"
-    );
+        std::shared_ptr<IHttpClient> httpClient = std::make_shared<WinHttpClient>(), std::string host = "localhost",
+        uint16_t port = 8085, std::string path = "/data.json");
     ~LibreHardwareMonitorHttpProvider() override = default;
 
     [[nodiscard]] std::optional<double> getCpuTempC() override;
@@ -120,9 +108,8 @@ enum class CpuTempProviderType {
 /**
  * @brief Factory function creating the desired CPU temperature provider based on configuration.
  */
-[[nodiscard]] std::unique_ptr<ICpuTempProvider> createCpuTempProvider(
-    CpuTempProviderType type = CpuTempProviderType::Auto,
-    std::shared_ptr<IHttpClient> httpClient = nullptr
-);
+[[nodiscard]] std::unique_ptr<ICpuTempProvider>
+createCpuTempProvider(CpuTempProviderType type = CpuTempProviderType::Auto,
+                      std::shared_ptr<IHttpClient> httpClient = nullptr);
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

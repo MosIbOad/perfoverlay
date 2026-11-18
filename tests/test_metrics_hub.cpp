@@ -58,10 +58,9 @@ public:
     std::unordered_map<uint32_t, perfoverlay::upscaler::UpscalerInfo> upscalerMap;
     int callCount{0};
 
-    std::optional<perfoverlay::upscaler::UpscalerInfo> getUpscalerInfo(
-        uint32_t processId,
-        std::string_view /*executablePath*/
-    ) override {
+    std::optional<perfoverlay::upscaler::UpscalerInfo> getUpscalerInfo(uint32_t processId,
+                                                                       std::string_view /*executablePath*/
+                                                                       ) override {
         const_cast<MockUpscalerProvider*>(this)->callCount++;
         auto it = upscalerMap.find(processId);
         if (it != upscalerMap.end()) {
@@ -71,7 +70,7 @@ public:
     }
 };
 
-} // namespace
+}  // namespace
 
 TEST_CASE("MetricsHub - Null providers produce empty snapshot", "[hub]") {
     MetricsHub hub(nullptr, nullptr, nullptr);
@@ -86,23 +85,18 @@ TEST_CASE("MetricsHub - Null providers produce empty snapshot", "[hub]") {
 
 TEST_CASE("MetricsHub - Aggregates active game, frame stats, and sensors", "[hub]") {
     MockForegroundProvider fg;
-    fg.activeGame = ActiveGameInfo{
-        .processId = 4242,
-        .processName = "Cyberpunk2077.exe",
-        .windowTitle = "Cyberpunk 2077"
-    };
+    fg.activeGame =
+        ActiveGameInfo{.processId = 4242, .processName = "Cyberpunk2077.exe", .windowTitle = "Cyberpunk 2077"};
 
     MockPresentCaptureProvider capture;
-    capture.statsMap[4242] = FrameStats{
-        .avgFps = 120.0,
-        .currentFps = 122.5,
-        .minFps = 80.0,
-        .maxFps = 144.0,
-        .p1LowFps = 95.0,
-        .p01LowFps = 75.0,
-        .avgFrameTimeMs = 8.33,
-        .p99FrameTimeMs = 10.5
-    };
+    capture.statsMap[4242] = FrameStats{.avgFps = 120.0,
+                                        .currentFps = 122.5,
+                                        .minFps = 80.0,
+                                        .maxFps = 144.0,
+                                        .p1LowFps = 95.0,
+                                        .p01LowFps = 75.0,
+                                        .avgFrameTimeMs = 8.33,
+                                        .p99FrameTimeMs = 10.5};
 
     MockSensorSnapshotProvider sensors;
     sensors.currentSnapshot.cpuUsagePercent = 28.5;
@@ -138,7 +132,7 @@ TEST_CASE("MetricsHub - Aggregates active game, frame stats, and sensors", "[hub
 
 TEST_CASE("MetricsHub - Clearly indicates when no active game is in foreground", "[hub]") {
     MockForegroundProvider fg;
-    fg.activeGame = std::nullopt; // Desktop / Explorer / None
+    fg.activeGame = std::nullopt;  // Desktop / Explorer / None
 
     MockPresentCaptureProvider capture;
     capture.statsMap[1234] = FrameStats{.avgFps = 60.0};
@@ -153,7 +147,7 @@ TEST_CASE("MetricsHub - Clearly indicates when no active game is in foreground",
 
     REQUIRE_FALSE(snap.hasActiveGame);
     REQUIRE_FALSE(snap.activeGame.has_value());
-    REQUIRE_FALSE(snap.frameStats.has_value()); // Frame stats not reported without active game
+    REQUIRE_FALSE(snap.frameStats.has_value());  // Frame stats not reported without active game
 
     // Sensors are still reported even when no game is active
     REQUIRE(snap.sensors.cpuUsagePercent.has_value());
@@ -182,7 +176,7 @@ TEST_CASE("MetricsHub - Selective polling preserves sensors when pollSensors is 
 
     // 2. Poll without sensors (e.g. 250 ms FPS tick)
     hub.pollOnce(false);
-    REQUIRE(sensors.callCount == 1); // Not called
+    REQUIRE(sensors.callCount == 1);  // Not called
     // Sensor reading from previous cycle must be preserved
     REQUIRE(*hub.getSnapshot().sensors.cpuUsagePercent == Approx(10.0));
 
@@ -233,22 +227,16 @@ TEST_CASE("MetricsHub - Background thread lifecycle and concurrent reads", "[hub
 
 TEST_CASE("MetricsHub - Integrates upscaler detection for active game", "[hub]") {
     MockForegroundProvider fg;
-    fg.activeGame = ActiveGameInfo{
-        .processId = 7777,
-        .processName = "Cyberpunk2077.exe",
-        .windowTitle = "Cyberpunk 2077",
-        .executablePath = "C:/Games/Cyberpunk/bin/x64/Cyberpunk2077.exe"
-    };
+    fg.activeGame = ActiveGameInfo{.processId = 7777,
+                                   .processName = "Cyberpunk2077.exe",
+                                   .windowTitle = "Cyberpunk 2077",
+                                   .executablePath = "C:/Games/Cyberpunk/bin/x64/Cyberpunk2077.exe"};
 
     MockPresentCaptureProvider capture;
     MockSensorSnapshotProvider sensors;
     MockUpscalerProvider upscaler;
-    upscaler.upscalerMap[7777] = perfoverlay::upscaler::UpscalerInfo{
-        .dlss = true,
-        .dlssFrameGen = true,
-        .fsr = "FSR 3",
-        .xess = false
-    };
+    upscaler.upscalerMap[7777] =
+        perfoverlay::upscaler::UpscalerInfo{.dlss = true, .dlssFrameGen = true, .fsr = "FSR 3", .xess = false};
 
     MetricsHub hub(&fg, &capture, &sensors, &upscaler);
     hub.pollOnce(true);

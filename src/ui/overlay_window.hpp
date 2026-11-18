@@ -6,8 +6,8 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #include <functional>
+#include <windows.h>
 
 struct ID3D11Device;
 struct ID3D11DeviceContext;
@@ -79,9 +79,7 @@ public:
 
     [[nodiscard]] HWND getHwnd() const noexcept { return hwnd_; }
 
-    void setMessageHook(std::function<bool(HWND, UINT, WPARAM, LPARAM)> hook) {
-        messageHook_ = std::move(hook);
-    }
+    void setMessageHook(std::function<bool(HWND, UINT, WPARAM, LPARAM)> hook) { messageHook_ = std::move(hook); }
 
 private:
     bool initWindow();
@@ -108,4 +106,4 @@ private:
     std::function<bool(HWND, UINT, WPARAM, LPARAM)> messageHook_;
 };
 
-} // namespace perfoverlay::ui
+}  // namespace perfoverlay::ui

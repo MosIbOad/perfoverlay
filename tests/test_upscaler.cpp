@@ -83,9 +83,8 @@ private:
         while (s.size() > 1 && s.back() == '/') {
             s.pop_back();
         }
-        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
-            return static_cast<char>(std::tolower(c));
-        });
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         return s;
     }
 
@@ -94,7 +93,7 @@ private:
     std::set<std::string> files_;
 };
 
-} // namespace
+}  // namespace
 
 TEST_CASE("Upscaler - Glob pattern matching", "[upscaler]") {
     SECTION("Exact match with case insensitivity") {
@@ -267,9 +266,9 @@ TEST_CASE("Upscaler - Subdirectory search depth restriction", "[upscaler]") {
         UpscalerDetector detector(mockFs, 2);
         const auto info = detector.scanDirectory("C:/Games/UnrealGame/Binaries/Win64");
 
-        REQUIRE(info.dlss);               // Found at depth 1
-        REQUIRE(info.fsr.has_value());    // Found at depth 2
-        REQUIRE_FALSE(info.xess);         // Depth 3 was safely ignored due to depth limit
+        REQUIRE(info.dlss);             // Found at depth 1
+        REQUIRE(info.fsr.has_value());  // Found at depth 2
+        REQUIRE_FALSE(info.xess);       // Depth 3 was safely ignored due to depth limit
     }
 
     SECTION("Depth 0 inspects only the root directory") {
@@ -327,11 +326,8 @@ TEST_CASE("Upscaler - Extensible rules allow adding custom library definitions",
     REQUIRE_FALSE(initial.dlss);
 
     // Add custom rule
-    detector.addRule(KnownDllRule{
-        .pattern = "custom_dlss_wrapper.dll",
-        .type = UpscalerType::Dlss,
-        .versionTag = "Custom"
-    });
+    detector.addRule(
+        KnownDllRule{.pattern = "custom_dlss_wrapper.dll", .type = UpscalerType::Dlss, .versionTag = "Custom"});
 
     const auto after = detector.scanDirectory("C:/Games/ModdedGame");
     REQUIRE(after.dlss);

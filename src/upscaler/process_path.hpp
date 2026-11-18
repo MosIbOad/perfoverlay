@@ -18,4 +18,4 @@ namespace perfoverlay::upscaler {
  */
 [[nodiscard]] std::string getProcessExecutablePath(uint32_t processId) noexcept;
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

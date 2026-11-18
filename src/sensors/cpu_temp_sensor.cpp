@@ -2,8 +2,7 @@
 
 namespace perfoverlay::sensors {
 
-CpuTempSensor::CpuTempSensor(std::unique_ptr<ICpuTempProvider> provider)
-    : provider_(std::move(provider)) {}
+CpuTempSensor::CpuTempSensor(std::unique_ptr<ICpuTempProvider> provider) : provider_(std::move(provider)) {}
 
 bool CpuTempSensor::init() {
     if (!provider_) {
@@ -24,4 +23,4 @@ void CpuTempSensor::updateSnapshot(SensorSnapshot& snapshot) const {
     snapshot.cpuTempC = currentTempC_;
 }
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

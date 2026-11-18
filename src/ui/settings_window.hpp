@@ -5,9 +5,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <windows.h>
 
 #include <functional>
 
@@ -72,4 +72,4 @@ private:
     ID3D11RenderTargetView* renderTargetView_{nullptr};
 };
 
-} // namespace perfoverlay::ui
+}  // namespace perfoverlay::ui

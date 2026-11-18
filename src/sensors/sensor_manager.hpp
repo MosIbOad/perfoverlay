@@ -72,4 +72,4 @@ private:
     std::jthread worker_;
 };
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

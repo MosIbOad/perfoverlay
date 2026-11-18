@@ -14,56 +14,49 @@ std::string normalizePath(std::string_view pathStr) {
     while (result.size() > 1 && result.back() == '/') {
         result.pop_back();
     }
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return result;
 }
 
-} // namespace
+}  // namespace
 
 UpscalerDetector::UpscalerDetector(std::shared_ptr<IFileSystem> fs, size_t maxDepth)
-    : fs_(std::move(fs)),
-      maxDepth_(maxDepth),
-      rules_(getDefaultKnownDllRules()) {}
+    : fs_(std::move(fs)), maxDepth_(maxDepth), rules_(getDefaultKnownDllRules()) {}
 
 void UpscalerDetector::applyRuleMatch(UpscalerInfo& info, const KnownDllRule& rule) {
     switch (rule.type) {
-    case UpscalerType::Dlss:
-        info.dlss = true;
-        break;
-    case UpscalerType::DlssFrameGen:
-        info.dlssFrameGen = true;
-        break;
-    case UpscalerType::Xess:
-        info.xess = true;
-        break;
-    case UpscalerType::Fsr:
-        if (rule.versionTag == "3") {
-            info.fsr = "FSR 3";
-        } else if (rule.versionTag == "2") {
-            if (!info.fsr.has_value() || *info.fsr == "FSR") {
-                info.fsr = "FSR 2";
+        case UpscalerType::Dlss:
+            info.dlss = true;
+            break;
+        case UpscalerType::DlssFrameGen:
+            info.dlssFrameGen = true;
+            break;
+        case UpscalerType::Xess:
+            info.xess = true;
+            break;
+        case UpscalerType::Fsr:
+            if (rule.versionTag == "3") {
+                info.fsr = "FSR 3";
+            } else if (rule.versionTag == "2") {
+                if (!info.fsr.has_value() || *info.fsr == "FSR") {
+                    info.fsr = "FSR 2";
+                }
+            } else if (!info.fsr.has_value()) {
+                info.fsr = "FSR";
             }
-        } else if (!info.fsr.has_value()) {
-            info.fsr = "FSR";
-        }
-        break;
+            break;
     }
 }
 
-void UpscalerDetector::scanDirectoryRecursive(
-    const std::filesystem::path& currentDir,
-    size_t currentDepth,
-    UpscalerInfo& info,
-    std::unordered_set<std::string>& visitedDirs
-) const {
+void UpscalerDetector::scanDirectoryRecursive(const std::filesystem::path& currentDir, size_t currentDepth,
+                                              UpscalerInfo& info, std::unordered_set<std::string>& visitedDirs) const {
     const std::string normDir = normalizePath(currentDir.generic_string());
     if (visitedDirs.contains(normDir)) {
         return;
     }
     if (visitedDirs.size() >= 100) {
-        return; // Guard against runaway traversal or excessive tree depth
+        return;  // Guard against runaway traversal or excessive tree depth
     }
     visitedDirs.insert(normDir);
 
@@ -93,10 +86,7 @@ UpscalerInfo UpscalerDetector::scanDirectory(const std::filesystem::path& dirPat
     return info;
 }
 
-std::optional<UpscalerInfo> UpscalerDetector::getUpscalerInfo(
-    uint32_t processId,
-    std::string_view executablePath
-) {
+std::optional<UpscalerInfo> UpscalerDetector::getUpscalerInfo(uint32_t processId, std::string_view executablePath) {
     if (processId == 0) {
         return std::nullopt;
     }
@@ -165,4 +155,4 @@ const std::vector<KnownDllRule>& UpscalerDetector::getRules() const noexcept {
     return rules_;
 }
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

@@ -40,4 +40,4 @@ public:
     [[nodiscard]] std::vector<FileEntry> listDirectory(const std::filesystem::path& path) const override;
 };
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

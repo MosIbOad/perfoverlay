@@ -14,10 +14,10 @@ namespace perfoverlay::upscaler {
  * @brief Categorization of modern real-time upscaling and frame generation technologies.
  */
 enum class UpscalerType {
-    Dlss,           ///< NVIDIA DLSS Super Resolution
-    DlssFrameGen,   ///< NVIDIA DLSS 3 Frame Generation
-    Fsr,            ///< AMD FidelityFX Super Resolution
-    Xess            ///< Intel XeSS (Xe Super Sampling)
+    Dlss,          ///< NVIDIA DLSS Super Resolution
+    DlssFrameGen,  ///< NVIDIA DLSS 3 Frame Generation
+    Fsr,           ///< AMD FidelityFX Super Resolution
+    Xess           ///< Intel XeSS (Xe Super Sampling)
 };
 
 /**
@@ -39,9 +39,7 @@ struct KnownDllRule {
     size_t starIdx = std::string_view::npos;
     size_t match = 0;
 
-    auto toLower = [](char c) noexcept {
-        return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    };
+    auto toLower = [](char c) noexcept { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); };
 
     while (t < text.size()) {
         if (p < pattern.size() && (pattern[p] == '?' || toLower(text[t]) == toLower(pattern[p]))) {
@@ -76,9 +74,7 @@ struct UpscalerInfo {
     std::optional<std::string> fsr;  ///< e.g. "FSR 3", "FSR 2", or "FSR"
     bool xess{false};
 
-    [[nodiscard]] bool anyDetected() const noexcept {
-        return dlss || dlssFrameGen || fsr.has_value() || xess;
-    }
+    [[nodiscard]] bool anyDetected() const noexcept { return dlss || dlssFrameGen || fsr.has_value() || xess; }
 
     /**
      * @brief Formats detected upscalers into a concise, readable comma-separated string.
@@ -118,27 +114,25 @@ struct UpscalerInfo {
  * @brief Returns the default extensible rule set for detecting DLSS, FSR, and XeSS libraries.
  */
 inline std::vector<KnownDllRule> getDefaultKnownDllRules() {
-    return {
-        // NVIDIA DLSS & Frame Generation
-        {"nvngx_dlss.dll", UpscalerType::Dlss, ""},
-        {"nvngx_dlssg.dll", UpscalerType::DlssFrameGen, ""},
-        {"nvngx_dlssd.dll", UpscalerType::Dlss, "RayReconstruction"},
+    return {// NVIDIA DLSS & Frame Generation
+            {"nvngx_dlss.dll", UpscalerType::Dlss, ""},
+            {"nvngx_dlssg.dll", UpscalerType::DlssFrameGen, ""},
+            {"nvngx_dlssd.dll", UpscalerType::Dlss, "RayReconstruction"},
 
-        // AMD FSR (FidelityFX Super Resolution)
-        {"ffx_fsr3_api_*.dll", UpscalerType::Fsr, "3"},
-        {"ffx_fsr2_api_*.dll", UpscalerType::Fsr, "2"},
-        {"ffx_fsr*.dll", UpscalerType::Fsr, ""},
-        {"amd_fidelityfx_dx12.dll", UpscalerType::Fsr, "SDK"},
-        {"amd_fidelityfx_vk.dll", UpscalerType::Fsr, "SDK"},
-        {"amd_fidelityfx_*.dll", UpscalerType::Fsr, "SDK"},
-        {"fidelityfx.dll", UpscalerType::Fsr, ""},
-        {"fidelityfx_*.dll", UpscalerType::Fsr, ""},
+            // AMD FSR (FidelityFX Super Resolution)
+            {"ffx_fsr3_api_*.dll", UpscalerType::Fsr, "3"},
+            {"ffx_fsr2_api_*.dll", UpscalerType::Fsr, "2"},
+            {"ffx_fsr*.dll", UpscalerType::Fsr, ""},
+            {"amd_fidelityfx_dx12.dll", UpscalerType::Fsr, "SDK"},
+            {"amd_fidelityfx_vk.dll", UpscalerType::Fsr, "SDK"},
+            {"amd_fidelityfx_*.dll", UpscalerType::Fsr, "SDK"},
+            {"fidelityfx.dll", UpscalerType::Fsr, ""},
+            {"fidelityfx_*.dll", UpscalerType::Fsr, ""},
 
-        // Intel XeSS
-        {"libxess.dll", UpscalerType::Xess, ""},
-        {"libxess_dx11.dll", UpscalerType::Xess, "DX11"},
-        {"libxess_*.dll", UpscalerType::Xess, ""}
-    };
+            // Intel XeSS
+            {"libxess.dll", UpscalerType::Xess, ""},
+            {"libxess_dx11.dll", UpscalerType::Xess, "DX11"},
+            {"libxess_*.dll", UpscalerType::Xess, ""}};
 }
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

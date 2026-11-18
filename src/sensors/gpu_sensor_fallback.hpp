@@ -28,4 +28,4 @@ private:
     std::unique_ptr<Impl> impl_;
 };
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

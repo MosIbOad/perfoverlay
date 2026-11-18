@@ -5,9 +5,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
-#include <evntrace.h>
 #include <evntcons.h>
+#include <evntrace.h>
+#include <windows.h>
 
 #include <atomic>
 #include <mutex>
@@ -38,14 +38,12 @@ BOOL WINAPI ConsoleCleanupHandler(DWORD ctrlType) {
     return FALSE;
 }
 
-} // namespace
+}  // namespace
 
 class EtwPresentCapture::Impl {
 public:
     Impl(size_t bufferCapacity, std::chrono::nanoseconds bufferDuration)
-        : bufferCapacity_(bufferCapacity),
-          bufferDuration_(bufferDuration),
-          calculator_(1) {
+        : bufferCapacity_(bufferCapacity), bufferDuration_(bufferDuration), calculator_(1) {
         LARGE_INTEGER qpcFreq{};
         if (QueryPerformanceFrequency(&qpcFreq) && qpcFreq.QuadPart > 0) {
             calculator_ = FrameTimeCalculator(static_cast<uint64_t>(qpcFreq.QuadPart));
@@ -53,9 +51,7 @@ public:
         SetConsoleCtrlHandler(ConsoleCleanupHandler, TRUE);
     }
 
-    ~Impl() {
-        stop();
-    }
+    ~Impl() { stop(); }
 
     EtwStartResult start() {
         if (running_.load()) {
@@ -70,10 +66,10 @@ public:
         auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(propBuffer.data());
         props->Wnode.BufferSize = bufSize;
         props->Wnode.Flags = WNODE_FLAG_TRACED_GUID;
-        props->Wnode.ClientContext = 1; // 1 = QueryPerformanceCounter resolution
+        props->Wnode.ClientContext = 1;  // 1 = QueryPerformanceCounter resolution
         props->LogFileMode = EVENT_TRACE_REAL_TIME_MODE;
         props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-        props->BufferSize = 64; // 64 KB buffers
+        props->BufferSize = 64;  // 64 KB buffers
         props->MinimumBuffers = 4;
         props->MaximumBuffers = 32;
         props->FlushTimer = 1;
@@ -89,9 +85,9 @@ public:
                     "Administrator privileges or membership in the 'Performance Log Users' group is required.\n"
                     "To resolve:\n"
                     "  Option 1: Run perfoverlay as Administrator.\n"
-                    "  Option 2: Add your user to the group once: net localgroup \"Performance Log Users\" \"%USERNAME%\" /add\n"
-                    "            (then log off and log back in)."
-            };
+                    "  Option 2: Add your user to the group once: net localgroup \"Performance Log Users\" "
+                    "\"%USERNAME%\" /add\n"
+                    "            (then log off and log back in)."};
         }
 
         if (status == ERROR_ALREADY_EXISTS) {
@@ -100,10 +96,8 @@ public:
         }
 
         if (status != ERROR_SUCCESS) {
-            return EtwStartResult{
-                .status = EtwStartStatus::SessionStartFailed,
-                .errorMessage = "StartTraceW failed with Win32 error: " + std::to_string(status)
-            };
+            return EtwStartResult{.status = EtwStartStatus::SessionStartFailed,
+                                  .errorMessage = "StartTraceW failed with Win32 error: " + std::to_string(status)};
         }
 
         sessionHandle_ = sessionHandle;
@@ -113,35 +107,17 @@ public:
         enableParams.Version = ENABLE_TRACE_PARAMETERS_VERSION_2;
         enableParams.EnableProperty = EVENT_ENABLE_PROPERTY_IGNORE_KEYWORD_0;
 
-        EnableTraceEx2(
-            sessionHandle_,
-            &DXGI_PROVIDER_GUID,
-            EVENT_CONTROL_CODE_ENABLE_PROVIDER,
-            TRACE_LEVEL_INFORMATION,
-            0,
-            0,
-            0,
-            &enableParams
-        );
+        EnableTraceEx2(sessionHandle_, &DXGI_PROVIDER_GUID, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_INFORMATION,
+                       0, 0, 0, &enableParams);
 
         // Enable Microsoft-Windows-DxgKrnl Provider
-        EnableTraceEx2(
-            sessionHandle_,
-            &DXGKRNL_PROVIDER_GUID,
-            EVENT_CONTROL_CODE_ENABLE_PROVIDER,
-            TRACE_LEVEL_INFORMATION,
-            0,
-            0,
-            0,
-            &enableParams
-        );
+        EnableTraceEx2(sessionHandle_, &DXGKRNL_PROVIDER_GUID, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
+                       TRACE_LEVEL_INFORMATION, 0, 0, 0, &enableParams);
 
         running_.store(true);
 
         // Launch consumer in background thread
-        worker_ = std::jthread([this](std::stop_token stopToken) {
-            consumeTrace(stopToken);
-        });
+        worker_ = std::jthread([this](std::stop_token stopToken) { consumeTrace(stopToken); });
 
         return EtwStartResult{.status = EtwStartStatus::Success};
     }
@@ -169,9 +145,7 @@ public:
         }
     }
 
-    [[nodiscard]] bool isRunning() const noexcept {
-        return running_.load();
-    }
+    [[nodiscard]] bool isRunning() const noexcept { return running_.load(); }
 
     [[nodiscard]] std::optional<core::FrameStats> getProcessStats(uint32_t processId) const {
         std::lock_guard lock(buffersMutex_);
@@ -249,10 +223,7 @@ private:
             std::lock_guard lock(buffersMutex_);
             auto it = processBuffers_.find(pid);
             if (it == processBuffers_.end()) {
-                it = processBuffers_.emplace(
-                    pid,
-                    core::FrameTimeBuffer(bufferCapacity_, bufferDuration_)
-                ).first;
+                it = processBuffers_.emplace(pid, core::FrameTimeBuffer(bufferCapacity_, bufferDuration_)).first;
             }
             it->second.push(*frameTimeMs);
             lastSeenTime_[pid] = std::chrono::steady_clock::now();
@@ -331,4 +302,4 @@ void EtwPresentCapture::pruneInactiveProcesses(std::chrono::nanoseconds maxIdleT
     impl_->pruneInactiveProcesses(maxIdleTime);
 }
 
-} // namespace perfoverlay::capture
+}  // namespace perfoverlay::capture

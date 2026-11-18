@@ -4,6 +4,8 @@ out/
 bin/
 lib/
 vcpkg_installed/
+*.zip
+*.zip.sha256
 
 # Visual Studio
 .vs/

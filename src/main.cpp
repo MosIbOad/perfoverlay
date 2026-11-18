@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
     bool debugMode = false;
     bool headlessMode = false;
     bool openSettingsOnStart = false;
-    int maxFrames = -1; // -1 runs indefinitely
+    int maxFrames = -1;  // -1 runs indefinitely
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -51,8 +51,8 @@ int main(int argc, char* argv[]) {
         if (configRes.createdDefault) {
             std::cout << "[Config] Created fresh default configuration file.\n";
         } else if (configRes.recoveredFromCorruption) {
-            std::cout << "[Config Warning] Corrupted config recovered! Backup saved to: "
-                      << configRes.backupFilePath << "\n";
+            std::cout << "[Config Warning] Corrupted config recovered! Backup saved to: " << configRes.backupFilePath
+                      << "\n";
         }
     }
 
@@ -101,12 +101,8 @@ int main(int argc, char* argv[]) {
 
         // Initialize Windows Notification Area / System Tray Icon
         trayIcon.init(overlay.getHwnd(), L"perfoverlay");
-        trayIcon.onToggleVisibility = [&overlay]() {
-            overlay.toggleVisibility();
-        };
-        trayIcon.onOpenSettings = [&settingsWindow, &appConfig]() {
-            settingsWindow.show(appConfig);
-        };
+        trayIcon.onToggleVisibility = [&overlay]() { overlay.toggleVisibility(); };
+        trayIcon.onOpenSettings = [&settingsWindow, &appConfig]() { settingsWindow.show(appConfig); };
         trayIcon.onOpenConfigFile = [&configPath]() {
             ShellExecuteW(nullptr, L"open", configPath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         };
@@ -123,26 +119,17 @@ int main(int argc, char* argv[]) {
         perfoverlay::core::MetricsSnapshot initialDummy;
         initialDummy.hasActiveGame = true;
         initialDummy.activeGame = perfoverlay::core::ActiveGameInfo{
-            .processId = 0,
-            .processName = "Waiting for game...",
-            .windowTitle = "perfoverlay"
-        };
-        initialDummy.frameStats = perfoverlay::core::FrameStats{
-            .avgFps = 0.0,
-            .currentFps = 0.0,
-            .minFps = 0.0,
-            .maxFps = 0.0,
-            .p1LowFps = 0.0,
-            .p01LowFps = 0.0,
-            .avgFrameTimeMs = 0.0,
-            .p99FrameTimeMs = 0.0
-        };
-        initialDummy.upscaler = perfoverlay::upscaler::UpscalerInfo{
-            .dlss = true,
-            .dlssFrameGen = true,
-            .fsr = "FSR 3",
-            .xess = false
-        };
+            .processId = 0, .processName = "Waiting for game...", .windowTitle = "perfoverlay"};
+        initialDummy.frameStats = perfoverlay::core::FrameStats{.avgFps = 0.0,
+                                                                .currentFps = 0.0,
+                                                                .minFps = 0.0,
+                                                                .maxFps = 0.0,
+                                                                .p1LowFps = 0.0,
+                                                                .p01LowFps = 0.0,
+                                                                .avgFrameTimeMs = 0.0,
+                                                                .p99FrameTimeMs = 0.0};
+        initialDummy.upscaler =
+            perfoverlay::upscaler::UpscalerInfo{.dlss = true, .dlssFrameGen = true, .fsr = "FSR 3", .xess = false};
         overlay.render(initialDummy);
     }
 
@@ -150,7 +137,8 @@ int main(int argc, char* argv[]) {
     hub.start();
 
     if (debugMode) {
-        std::cout << "[Overlay] Running. Press " << appConfig.toggleHotkey << " to toggle visibility. Press Ctrl+C to exit.\n";
+        std::cout << "[Overlay] Running. Press " << appConfig.toggleHotkey
+                  << " to toggle visibility. Press Ctrl+C to exit.\n";
     }
 
     // Main application render and message loop
@@ -160,7 +148,7 @@ int main(int argc, char* argv[]) {
     while (maxFrames < 0 || frameCount < maxFrames) {
         if (!headlessMode) {
             if (!overlay.pollMessages()) {
-                break; // WM_QUIT received
+                break;  // WM_QUIT received
             }
 
             if (settingsWindow.isVisible()) {

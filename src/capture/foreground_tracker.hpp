@@ -35,15 +35,11 @@ public:
      *
      * Pure function: unit testable without active Win32 UI.
      */
-    [[nodiscard]] static bool isExcluded(
-        uint32_t processId,
-        uint32_t ownProcessId,
-        std::string_view processName,
-        std::string_view windowTitle
-    ) noexcept;
+    [[nodiscard]] static bool isExcluded(uint32_t processId, uint32_t ownProcessId, std::string_view processName,
+                                         std::string_view windowTitle) noexcept;
 
 private:
     uint32_t ownProcessId_{0};
 };
 
-} // namespace perfoverlay::capture
+}  // namespace perfoverlay::capture

@@ -10,12 +10,7 @@ namespace perfoverlay::core {
 /**
  * @brief Screen corner options for placing the overlay.
  */
-enum class OverlayCorner {
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight
-};
+enum class OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight };
 
 [[nodiscard]] std::string cornerToString(OverlayCorner corner);
 [[nodiscard]] OverlayCorner stringToCorner(std::string_view str);
@@ -55,7 +50,7 @@ struct AppConfig {
     uint32_t sensorPollIntervalMs{500};
 
     std::string toggleHotkey{"F10"};
-    std::string cpuTempProvider{"auto"}; // "auto", "librehardwaremonitor", "disabled"
+    std::string cpuTempProvider{"auto"};  // "auto", "librehardwaremonitor", "disabled"
 
     VisibleMetricsConfig metrics;
 };
@@ -105,4 +100,4 @@ public:
     [[nodiscard]] static std::string serializeJson(const AppConfig& config, int indent = 4);
 };
 
-} // namespace perfoverlay::core
+}  // namespace perfoverlay::core

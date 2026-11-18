@@ -3,8 +3,8 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #include <algorithm>
+#include <windows.h>
 
 namespace perfoverlay::sensors {
 
@@ -14,7 +14,7 @@ uint64_t fileTimeToUint64(const FILETIME& ft) noexcept {
     return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
 }
 
-} // namespace
+}  // namespace
 
 CpuSensor::CpuSensor() = default;
 
@@ -70,4 +70,4 @@ void CpuSensor::updateSnapshot(SensorSnapshot& snapshot) const {
     }
 }
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

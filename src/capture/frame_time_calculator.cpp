@@ -5,8 +5,7 @@
 namespace perfoverlay::capture {
 
 FrameTimeCalculator::FrameTimeCalculator(uint64_t qpcFrequency, double minDeltaMs)
-    : qpcFrequency_(std::max<uint64_t>(1, qpcFrequency)),
-      minDeltaMs_(std::max<double>(0.0, minDeltaMs)) {}
+    : qpcFrequency_(std::max<uint64_t>(1, qpcFrequency)), minDeltaMs_(std::max<double>(0.0, minDeltaMs)) {}
 
 std::optional<double> FrameTimeCalculator::processEvent(uint32_t processId, uint64_t qpcTimestamp) {
     if (processId == 0) {
@@ -46,4 +45,4 @@ void FrameTimeCalculator::clear() {
     lastTimestamps_.clear();
 }
 
-} // namespace perfoverlay::capture
+}  // namespace perfoverlay::capture

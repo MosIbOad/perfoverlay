@@ -11,14 +11,14 @@ namespace perfoverlay::sensors {
  * or available on every hardware/driver configuration.
  */
 struct SensorSnapshot {
-    std::optional<double> cpuUsagePercent; // CPU utilization percentage (0.0 - 100.0)
-    std::optional<double> cpuTempC;        // CPU package/core temperature in degrees Celsius
-    std::optional<double> gpuUsagePercent; // GPU core utilization percentage (0.0 - 100.0)
-    std::optional<double> gpuTempC;        // GPU core temperature in degrees Celsius
-    std::optional<double> gpuVramUsedMB;   // GPU dedicated video memory used (in MB)
-    std::optional<double> gpuVramTotalMB;  // GPU dedicated video memory total capacity (in MB)
-    std::optional<double> gpuClockMHz;     // GPU core clock speed in MHz
-    std::optional<double> gpuPowerW;       // GPU power consumption in Watts
+    std::optional<double> cpuUsagePercent;  // CPU utilization percentage (0.0 - 100.0)
+    std::optional<double> cpuTempC;         // CPU package/core temperature in degrees Celsius
+    std::optional<double> gpuUsagePercent;  // GPU core utilization percentage (0.0 - 100.0)
+    std::optional<double> gpuTempC;         // GPU core temperature in degrees Celsius
+    std::optional<double> gpuVramUsedMB;    // GPU dedicated video memory used (in MB)
+    std::optional<double> gpuVramTotalMB;   // GPU dedicated video memory total capacity (in MB)
+    std::optional<double> gpuClockMHz;      // GPU core clock speed in MHz
+    std::optional<double> gpuPowerW;        // GPU power consumption in Watts
 };
 
 /**
@@ -45,4 +45,4 @@ public:
     virtual void updateSnapshot(SensorSnapshot& snapshot) const = 0;
 };
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

@@ -15,9 +15,8 @@ namespace {
 
 std::string toLower(std::string_view str) {
     std::string result(str);
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return result;
 }
 
@@ -30,25 +29,18 @@ ProcessImageInfo getProcessImageInfo(HANDLE processHandle) {
     std::array<char, MAX_PATH> pathBuffer{};
     DWORD size = static_cast<DWORD>(pathBuffer.size());
     if (QueryFullProcessImageNameA(processHandle, 0, pathBuffer.data(), &size)) {
-        return ProcessImageInfo{
-            .fullPath = std::string(pathBuffer.data(), size),
-            .fileName = std::filesystem::path(pathBuffer.data()).filename().string()
-        };
+        return ProcessImageInfo{.fullPath = std::string(pathBuffer.data(), size),
+                                .fileName = std::filesystem::path(pathBuffer.data()).filename().string()};
     }
     return {};
 }
 
-} // namespace
+}  // namespace
 
-ForegroundProcessTracker::ForegroundProcessTracker()
-    : ownProcessId_(GetCurrentProcessId()) {}
+ForegroundProcessTracker::ForegroundProcessTracker() : ownProcessId_(GetCurrentProcessId()) {}
 
-bool ForegroundProcessTracker::isExcluded(
-    uint32_t processId,
-    uint32_t ownProcessId,
-    std::string_view processName,
-    std::string_view windowTitle
-) noexcept {
+bool ForegroundProcessTracker::isExcluded(uint32_t processId, uint32_t ownProcessId, std::string_view processName,
+                                          std::string_view windowTitle) noexcept {
     if (processId == 0 || processId == 4) {
         return true;
     }
@@ -58,20 +50,13 @@ bool ForegroundProcessTracker::isExcluded(
     }
 
     const std::string lowerName = toLower(processName);
-    if (lowerName == "explorer.exe" ||
-        lowerName == "dwm.exe" ||
-        lowerName == "shellexperiencehost.exe" ||
-        lowerName == "startmenuexperiencehost.exe" ||
-        lowerName == "searchhost.exe" ||
-        lowerName == "textinputhost.exe" ||
-        lowerName == "applicationframehost.exe" ||
-        lowerName == "lockapp.exe") {
+    if (lowerName == "explorer.exe" || lowerName == "dwm.exe" || lowerName == "shellexperiencehost.exe" ||
+        lowerName == "startmenuexperiencehost.exe" || lowerName == "searchhost.exe" ||
+        lowerName == "textinputhost.exe" || lowerName == "applicationframehost.exe" || lowerName == "lockapp.exe") {
         return true;
     }
 
-    if (windowTitle.empty() ||
-        windowTitle == "Program Manager" ||
-        windowTitle == "Taskbar" ||
+    if (windowTitle.empty() || windowTitle == "Program Manager" || windowTitle == "Taskbar" ||
         windowTitle == "Windows Shell Experience Host") {
         return true;
     }
@@ -117,4 +102,4 @@ std::optional<ForegroundProcessInfo> ForegroundProcessTracker::getActiveProcess(
     };
 }
 
-} // namespace perfoverlay::capture
+}  // namespace perfoverlay::capture

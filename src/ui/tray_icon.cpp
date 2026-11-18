@@ -53,15 +53,7 @@ void TrayIcon::showContextMenu(HWND hwnd) {
 
     SetForegroundWindow(hwnd);
 
-    const int cmd = TrackPopupMenu(
-        hMenu,
-        TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
-        pt.x,
-        pt.y,
-        0,
-        hwnd,
-        nullptr
-    );
+    const int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
 
     PostMessageW(hwnd, WM_NULL, 0, 0);
     DestroyMenu(hMenu);
@@ -96,4 +88,4 @@ bool TrayIcon::handleMessage(HWND hwnd, UINT msg, WPARAM /*wParam*/, LPARAM lPar
     return false;
 }
 
-} // namespace perfoverlay::ui
+}  // namespace perfoverlay::ui

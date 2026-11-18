@@ -1,8 +1,8 @@
 #include "ui/settings_window.hpp"
 
 #include <imgui.h>
-#include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+#include <imgui_impl_win32.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -11,7 +11,7 @@ namespace perfoverlay::ui {
 namespace {
 constexpr int SETTINGS_WIDTH = 480;
 constexpr int SETTINGS_HEIGHT = 580;
-} // namespace
+}  // namespace
 
 SettingsWindow::SettingsWindow() = default;
 
@@ -31,17 +31,17 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
     auto* window = reinterpret_cast<SettingsWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
     switch (msg) {
-    case WM_CLOSE:
-        if (window) {
-            window->hide();
-        }
-        return 0;
+        case WM_CLOSE:
+            if (window) {
+                window->hide();
+            }
+            return 0;
 
-    case WM_DESTROY:
-        return 0;
+        case WM_DESTROY:
+            return 0;
 
-    default:
-        return DefWindowProcW(hwnd, msg, wParam, lParam);
+        default:
+            return DefWindowProcW(hwnd, msg, wParam, lParam);
     }
 }
 
@@ -56,20 +56,9 @@ bool SettingsWindow::init(HWND /*parentHwnd*/) {
     wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
     RegisterClassExW(&wc);
 
-    hwnd_ = CreateWindowExW(
-        0,
-        wc.lpszClassName,
-        L"perfoverlay - Ayarlar (Settings)",
-        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        SETTINGS_WIDTH,
-        SETTINGS_HEIGHT,
-        nullptr,
-        nullptr,
-        wc.hInstance,
-        nullptr
-    );
+    hwnd_ = CreateWindowExW(0, wc.lpszClassName, L"perfoverlay - Ayarlar (Settings)",
+                            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT,
+                            SETTINGS_WIDTH, SETTINGS_HEIGHT, nullptr, nullptr, wc.hInstance, nullptr);
 
     if (!hwnd_) {
         return false;
@@ -111,36 +100,14 @@ bool SettingsWindow::initD3D() {
         D3D_FEATURE_LEVEL_10_0,
     };
 
-    HRESULT hr = D3D11CreateDeviceAndSwapChain(
-        nullptr,
-        D3D_DRIVER_TYPE_HARDWARE,
-        nullptr,
-        createDeviceFlags,
-        featureLevelArray,
-        2,
-        D3D11_SDK_VERSION,
-        &sd,
-        &swapChain_,
-        &d3dDevice_,
-        &featureLevel,
-        &d3dContext_
-    );
+    HRESULT hr =
+        D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray,
+                                      2, D3D11_SDK_VERSION, &sd, &swapChain_, &d3dDevice_, &featureLevel, &d3dContext_);
 
     if (FAILED(hr)) {
-        hr = D3D11CreateDeviceAndSwapChain(
-            nullptr,
-            D3D_DRIVER_TYPE_WARP,
-            nullptr,
-            createDeviceFlags,
-            featureLevelArray,
-            2,
-            D3D11_SDK_VERSION,
-            &sd,
-            &swapChain_,
-            &d3dDevice_,
-            &featureLevel,
-            &d3dContext_
-        );
+        hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray,
+                                           2, D3D11_SDK_VERSION, &sd, &swapChain_, &d3dDevice_, &featureLevel,
+                                           &d3dContext_);
         if (FAILED(hr)) {
             return false;
         }
@@ -217,15 +184,11 @@ bool SettingsWindow::render() {
     RECT clientRect;
     GetClientRect(hwnd_, &clientRect);
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(
-        ImVec2(static_cast<float>(clientRect.right), static_cast<float>(clientRect.bottom)),
-        ImGuiCond_Always
-    );
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(clientRect.right), static_cast<float>(clientRect.bottom)),
+                             ImGuiCond_Always);
 
-    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
-                                   ImGuiWindowFlags_NoResize |
-                                   ImGuiWindowFlags_NoMove |
-                                   ImGuiWindowFlags_NoCollapse;
+    const ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
     if (ImGui::Begin("SettingsPanel", nullptr, flags)) {
         ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "PERFOVERLAY AYARLARI");
@@ -261,7 +224,8 @@ bool SettingsWindow::render() {
 
         // 2. Overlay Placement
         if (ImGui::CollapsingHeader("Konum ve Boyut (Placement & Sizing)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            const char* corners[] = { "Sol Ust (Top-Left)", "Sag Ust (Top-Right)", "Sol Alt (Bottom-Left)", "Sag Alt (Bottom-Right)" };
+            const char* corners[] = {"Sol Ust (Top-Left)", "Sag Ust (Top-Right)", "Sol Alt (Bottom-Left)",
+                                     "Sag Alt (Bottom-Right)"};
             int currentCorner = static_cast<int>(workingConfig_.corner);
             if (ImGui::Combo("Ekran Kosesi", &currentCorner, corners, IM_ARRAYSIZE(corners))) {
                 workingConfig_.corner = static_cast<core::OverlayCorner>(currentCorner);
@@ -277,7 +241,7 @@ bool SettingsWindow::render() {
         if (ImGui::CollapsingHeader("Gorunum ve Donanim (Aesthetics & Hardware)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Arka Plan Saydamligi", &workingConfig_.backgroundAlpha, 0.1f, 1.0f, "%.2f");
 
-            const char* providers[] = { "Otomatik (Auto)", "LibreHardwareMonitor (HTTP)", "Devre Disi (Disabled)" };
+            const char* providers[] = {"Otomatik (Auto)", "LibreHardwareMonitor (HTTP)", "Devre Disi (Disabled)"};
             int providerIndex = 0;
             if (workingConfig_.cpuTempProvider == "librehardwaremonitor") {
                 providerIndex = 1;
@@ -286,9 +250,12 @@ bool SettingsWindow::render() {
             }
 
             if (ImGui::Combo("CPU Sicaklik Saglayicisi", &providerIndex, providers, IM_ARRAYSIZE(providers))) {
-                if (providerIndex == 0) workingConfig_.cpuTempProvider = "auto";
-                else if (providerIndex == 1) workingConfig_.cpuTempProvider = "librehardwaremonitor";
-                else workingConfig_.cpuTempProvider = "disabled";
+                if (providerIndex == 0)
+                    workingConfig_.cpuTempProvider = "auto";
+                else if (providerIndex == 1)
+                    workingConfig_.cpuTempProvider = "librehardwaremonitor";
+                else
+                    workingConfig_.cpuTempProvider = "disabled";
             }
 
             ImGui::TextDisabled("Kisayol tusu: %s (Varsayilan F10)", workingConfig_.toggleHotkey.c_str());
@@ -328,4 +295,4 @@ bool SettingsWindow::render() {
     return true;
 }
 
-} // namespace perfoverlay::ui
+}  // namespace perfoverlay::ui

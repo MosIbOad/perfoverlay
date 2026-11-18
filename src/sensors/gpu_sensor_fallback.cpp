@@ -3,9 +3,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
 #include <pdh.h>
 #include <pdhmsg.h>
+#include <windows.h>
 
 #include <algorithm>
 #include <vector>
@@ -16,9 +16,7 @@ class GpuSensorFallback::Impl {
 public:
     Impl() = default;
 
-    ~Impl() {
-        shutdown();
-    }
+    ~Impl() { shutdown(); }
 
     bool init() {
         PDH_STATUS status = PdhOpenQueryW(nullptr, 0, &query_);
@@ -27,12 +25,7 @@ public:
         }
 
         // Add wildcard GPU Engine utilization counter
-        status = PdhAddEnglishCounterW(
-            query_,
-            L"\\GPU Engine(*)\\Utilization Percentage",
-            0,
-            &counter_
-        );
+        status = PdhAddEnglishCounterW(query_, L"\\GPU Engine(*)\\Utilization Percentage", 0, &counter_);
         if (status != ERROR_SUCCESS) {
             shutdown();
             return false;
@@ -56,26 +49,14 @@ public:
 
         DWORD bufferSize = 0;
         DWORD itemCount = 0;
-        status = PdhGetFormattedCounterArrayW(
-            counter_,
-            PDH_FMT_DOUBLE,
-            &bufferSize,
-            &itemCount,
-            nullptr
-        );
+        status = PdhGetFormattedCounterArrayW(counter_, PDH_FMT_DOUBLE, &bufferSize, &itemCount, nullptr);
         if (status != PDH_MORE_DATA || bufferSize == 0) {
             return;
         }
 
         std::vector<BYTE> buffer(bufferSize);
         auto* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_W*>(buffer.data());
-        status = PdhGetFormattedCounterArrayW(
-            counter_,
-            PDH_FMT_DOUBLE,
-            &bufferSize,
-            &itemCount,
-            items
-        );
+        status = PdhGetFormattedCounterArrayW(counter_, PDH_FMT_DOUBLE, &bufferSize, &itemCount, items);
         if (status != ERROR_SUCCESS) {
             return;
         }
@@ -95,9 +76,7 @@ public:
         }
     }
 
-    [[nodiscard]] bool isInitialized() const noexcept {
-        return initialized_;
-    }
+    [[nodiscard]] bool isInitialized() const noexcept { return initialized_; }
 
 private:
     void shutdown() {
@@ -115,8 +94,7 @@ private:
     std::optional<double> gpuUsagePercent_;
 };
 
-GpuSensorFallback::GpuSensorFallback()
-    : impl_(std::make_unique<Impl>()) {}
+GpuSensorFallback::GpuSensorFallback() : impl_(std::make_unique<Impl>()) {}
 
 GpuSensorFallback::~GpuSensorFallback() = default;
 
@@ -136,4 +114,4 @@ bool GpuSensorFallback::isInitialized() const noexcept {
     return impl_->isInitialized();
 }
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

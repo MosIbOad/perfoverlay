@@ -1,13 +1,13 @@
-#include "sensors/sensor_types.hpp"
-#include "sensors/sensor_manager.hpp"
+#include "sensors/amd_gpu_sensor.hpp"
 #include "sensors/cpu_sensor.hpp"
 #include "sensors/cpu_temp_provider.hpp"
 #include "sensors/cpu_temp_sensor.hpp"
-#include "sensors/amd_gpu_sensor.hpp"
 #include "sensors/gpu_sensor_fallback.hpp"
+#include "sensors/sensor_manager.hpp"
+#include "sensors/sensor_types.hpp"
 
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
 #include <thread>
@@ -28,19 +28,25 @@ public:
         return initResult;
     }
 
-    void poll() override {
-        ++pollCalls;
-    }
+    void poll() override { ++pollCalls; }
 
     void updateSnapshot(SensorSnapshot& snapshot) const override {
-        if (values.cpuUsagePercent.has_value()) snapshot.cpuUsagePercent = values.cpuUsagePercent;
-        if (values.cpuTempC.has_value()) snapshot.cpuTempC = values.cpuTempC;
-        if (values.gpuUsagePercent.has_value()) snapshot.gpuUsagePercent = values.gpuUsagePercent;
-        if (values.gpuTempC.has_value()) snapshot.gpuTempC = values.gpuTempC;
-        if (values.gpuVramUsedMB.has_value()) snapshot.gpuVramUsedMB = values.gpuVramUsedMB;
-        if (values.gpuVramTotalMB.has_value()) snapshot.gpuVramTotalMB = values.gpuVramTotalMB;
-        if (values.gpuClockMHz.has_value()) snapshot.gpuClockMHz = values.gpuClockMHz;
-        if (values.gpuPowerW.has_value()) snapshot.gpuPowerW = values.gpuPowerW;
+        if (values.cpuUsagePercent.has_value())
+            snapshot.cpuUsagePercent = values.cpuUsagePercent;
+        if (values.cpuTempC.has_value())
+            snapshot.cpuTempC = values.cpuTempC;
+        if (values.gpuUsagePercent.has_value())
+            snapshot.gpuUsagePercent = values.gpuUsagePercent;
+        if (values.gpuTempC.has_value())
+            snapshot.gpuTempC = values.gpuTempC;
+        if (values.gpuVramUsedMB.has_value())
+            snapshot.gpuVramUsedMB = values.gpuVramUsedMB;
+        if (values.gpuVramTotalMB.has_value())
+            snapshot.gpuVramTotalMB = values.gpuVramTotalMB;
+        if (values.gpuClockMHz.has_value())
+            snapshot.gpuClockMHz = values.gpuClockMHz;
+        if (values.gpuPowerW.has_value())
+            snapshot.gpuPowerW = values.gpuPowerW;
     }
 };
 
@@ -49,18 +55,15 @@ public:
     std::optional<std::string> response;
     int callCount{0};
 
-    std::optional<std::string> get(
-        std::string_view /*host*/,
-        uint16_t /*port*/,
-        std::string_view /*path*/,
-        std::chrono::milliseconds /*timeout*/
-    ) override {
+    std::optional<std::string> get(std::string_view /*host*/, uint16_t /*port*/, std::string_view /*path*/,
+                                   std::chrono::milliseconds /*timeout*/
+                                   ) override {
         ++callCount;
         return response;
     }
 };
 
-} // namespace
+}  // namespace
 
 TEST_CASE("SensorSnapshot - Default values are std::nullopt", "[sensors]") {
     SensorSnapshot snapshot;
@@ -332,7 +335,7 @@ TEST_CASE("LibreHardwareMonitorHttpProvider - Queries mock HTTP client", "[senso
     }
 
     SECTION("HTTP connection failure / timeout returns std::nullopt") {
-        mockClient->response = std::nullopt; // Server not running
+        mockClient->response = std::nullopt;  // Server not running
 
         LibreHardwareMonitorHttpProvider provider(mockClient, "localhost", 8085, "/data.json");
         const auto temp = provider.getCpuTempC();

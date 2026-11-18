@@ -7,7 +7,7 @@
 
 // Disable MSVC warnings inside third-party ADLX headers
 #pragma warning(push)
-#pragma warning(disable: 4100 4201 4267 4505)
+#pragma warning(disable : 4100 4201 4267 4505)
 #include "ADLXHelper.h"
 #include "Include/IPerformanceMonitoring.h"
 #pragma warning(pop)
@@ -18,20 +18,13 @@ class AmdGpuSensor::Impl {
 public:
     Impl() = default;
 
-    ~Impl() {
-        shutdown();
-    }
+    ~Impl() { shutdown(); }
 
     bool init() {
         // Probe whether amdadlx64.dll is present to avoid popups on non-AMD systems
-        HMODULE probe = LoadLibraryExA(
-            "amdadlx64.dll",
-            nullptr,
-            LOAD_LIBRARY_SEARCH_USER_DIRS |
-            LOAD_LIBRARY_SEARCH_APPLICATION_DIR |
-            LOAD_LIBRARY_SEARCH_DEFAULT_DIRS |
-            LOAD_LIBRARY_SEARCH_SYSTEM32
-        );
+        HMODULE probe = LoadLibraryExA("amdadlx64.dll", nullptr,
+                                       LOAD_LIBRARY_SEARCH_USER_DIRS | LOAD_LIBRARY_SEARCH_APPLICATION_DIR |
+                                           LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_SYSTEM32);
         if (!probe) {
             return false;
         }
@@ -142,9 +135,7 @@ public:
         }
     }
 
-    [[nodiscard]] bool isInitialized() const noexcept {
-        return initialized_;
-    }
+    [[nodiscard]] bool isInitialized() const noexcept { return initialized_; }
 
 private:
     void shutdown() {
@@ -170,8 +161,7 @@ private:
     std::optional<double> gpuPowerW_;
 };
 
-AmdGpuSensor::AmdGpuSensor()
-    : impl_(std::make_unique<Impl>()) {}
+AmdGpuSensor::AmdGpuSensor() : impl_(std::make_unique<Impl>()) {}
 
 AmdGpuSensor::~AmdGpuSensor() = default;
 
@@ -191,4 +181,4 @@ bool AmdGpuSensor::isInitialized() const noexcept {
     return impl_->isInitialized();
 }
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

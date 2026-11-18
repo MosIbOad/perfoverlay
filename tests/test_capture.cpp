@@ -1,6 +1,6 @@
 #include "capture/etw_types.hpp"
-#include "capture/frame_time_calculator.hpp"
 #include "capture/foreground_tracker.hpp"
+#include "capture/frame_time_calculator.hpp"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -33,7 +33,7 @@ TEST_CASE("FrameTimeCalculator - Basic delta calculations", "[capture][calculato
 
 TEST_CASE("FrameTimeCalculator - Sub-millisecond duplicate filtering", "[capture][calculator]") {
     constexpr uint64_t qpcFreq = 10'000'000;
-    FrameTimeCalculator calc(qpcFreq, 0.1); // minDelta = 0.1 ms (1000 ticks)
+    FrameTimeCalculator calc(qpcFreq, 0.1);  // minDelta = 0.1 ms (1000 ticks)
 
     const uint32_t pid = 5555;
 
@@ -41,7 +41,7 @@ TEST_CASE("FrameTimeCalculator - Sub-millisecond duplicate filtering", "[capture
 
     // Second event arrives 200 ticks later (0.02 ms delta, nested DxgKrnl event)
     auto dup = calc.processEvent(pid, 1'000'200);
-    REQUIRE_FALSE(dup.has_value()); // Must be filtered out
+    REQUIRE_FALSE(dup.has_value());  // Must be filtered out
 
     // Real next frame arrives 166,667 ticks after baseline
     auto nextFrame = calc.processEvent(pid, 1'166'667);
@@ -77,8 +77,8 @@ TEST_CASE("FrameTimeCalculator - Multiple process isolation", "[capture][calcula
     calc.processEvent(pidB, 20'000'000);
 
     // Interleaved events
-    auto a1 = calc.processEvent(pidA, 10'166'667); // ~16.667 ms
-    auto b1 = calc.processEvent(pidB, 20'333'333); // ~33.333 ms
+    auto a1 = calc.processEvent(pidA, 10'166'667);  // ~16.667 ms
+    auto b1 = calc.processEvent(pidB, 20'333'333);  // ~33.333 ms
 
     REQUIRE(a1.has_value());
     REQUIRE(*a1 == Approx(16.6667).epsilon(0.001));

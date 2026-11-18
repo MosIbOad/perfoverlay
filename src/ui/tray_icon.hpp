@@ -63,4 +63,4 @@ private:
     bool added_{false};
 };
 
-} // namespace perfoverlay::ui
+}  // namespace perfoverlay::ui

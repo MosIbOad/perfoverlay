@@ -71,10 +71,8 @@ public:
 class IUpscalerProvider {
 public:
     virtual ~IUpscalerProvider() = default;
-    virtual std::optional<upscaler::UpscalerInfo> getUpscalerInfo(
-        uint32_t processId,
-        std::string_view executablePath
-    ) = 0;
+    virtual std::optional<upscaler::UpscalerInfo> getUpscalerInfo(uint32_t processId,
+                                                                  std::string_view executablePath) = 0;
 };
 
 /**
@@ -88,12 +86,9 @@ public:
  */
 class MetricsHub {
 public:
-    MetricsHub(
-        const IForegroundProcessProvider* fgProvider = nullptr,
-        const IPresentCaptureProvider* captureProvider = nullptr,
-        const ISensorSnapshotProvider* sensorProvider = nullptr,
-        IUpscalerProvider* upscalerProvider = nullptr
-    );
+    MetricsHub(const IForegroundProcessProvider* fgProvider = nullptr,
+               const IPresentCaptureProvider* captureProvider = nullptr,
+               const ISensorSnapshotProvider* sensorProvider = nullptr, IUpscalerProvider* upscalerProvider = nullptr);
     ~MetricsHub();
 
     MetricsHub(const MetricsHub&) = delete;
@@ -101,18 +96,10 @@ public:
     MetricsHub(MetricsHub&&) = delete;
     MetricsHub& operator=(MetricsHub&&) = delete;
 
-    void setForegroundProvider(const IForegroundProcessProvider* provider) noexcept {
-        fgProvider_ = provider;
-    }
-    void setCaptureProvider(const IPresentCaptureProvider* provider) noexcept {
-        captureProvider_ = provider;
-    }
-    void setSensorProvider(const ISensorSnapshotProvider* provider) noexcept {
-        sensorProvider_ = provider;
-    }
-    void setUpscalerProvider(IUpscalerProvider* provider) noexcept {
-        upscalerProvider_ = provider;
-    }
+    void setForegroundProvider(const IForegroundProcessProvider* provider) noexcept { fgProvider_ = provider; }
+    void setCaptureProvider(const IPresentCaptureProvider* provider) noexcept { captureProvider_ = provider; }
+    void setSensorProvider(const ISensorSnapshotProvider* provider) noexcept { sensorProvider_ = provider; }
+    void setUpscalerProvider(IUpscalerProvider* provider) noexcept { upscalerProvider_ = provider; }
 
     /**
      * @brief Starts the background aggregation loop.
@@ -152,4 +139,4 @@ private:
     std::jthread worker_;
 };
 
-} // namespace perfoverlay::core
+}  // namespace perfoverlay::core

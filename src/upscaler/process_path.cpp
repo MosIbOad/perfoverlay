@@ -33,4 +33,4 @@ std::string getProcessExecutablePath(uint32_t processId) noexcept {
     return result;
 }
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

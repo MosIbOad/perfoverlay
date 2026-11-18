@@ -29,10 +29,8 @@ namespace perfoverlay::upscaler {
  */
 class UpscalerDetector : public core::IUpscalerProvider {
 public:
-    explicit UpscalerDetector(
-        std::shared_ptr<IFileSystem> fs = std::make_shared<RealFileSystem>(),
-        size_t maxDepth = 2
-    );
+    explicit UpscalerDetector(std::shared_ptr<IFileSystem> fs = std::make_shared<RealFileSystem>(),
+                              size_t maxDepth = 2);
     ~UpscalerDetector() override = default;
 
     UpscalerDetector(const UpscalerDetector&) = delete;
@@ -48,10 +46,7 @@ public:
      * @param executablePath Optional full path to the executable. If empty, resolved safely via PID.
      * @return UpscalerInfo indicating detected technologies in game files.
      */
-    std::optional<UpscalerInfo> getUpscalerInfo(
-        uint32_t processId,
-        std::string_view executablePath
-    ) override;
+    std::optional<UpscalerInfo> getUpscalerInfo(uint32_t processId, std::string_view executablePath) override;
 
     /**
      * @brief Performs a direct, non-cached directory scan up to maxDepth.
@@ -86,12 +81,8 @@ public:
     [[nodiscard]] size_t getMaxDepth() const noexcept { return maxDepth_; }
 
 private:
-    void scanDirectoryRecursive(
-        const std::filesystem::path& currentDir,
-        size_t currentDepth,
-        UpscalerInfo& info,
-        std::unordered_set<std::string>& visitedDirs
-    ) const;
+    void scanDirectoryRecursive(const std::filesystem::path& currentDir, size_t currentDepth, UpscalerInfo& info,
+                                std::unordered_set<std::string>& visitedDirs) const;
 
     static void applyRuleMatch(UpscalerInfo& info, const KnownDllRule& rule);
 
@@ -109,4 +100,4 @@ private:
     std::unordered_map<std::string, UpscalerInfo> cacheByPath_;
 };
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

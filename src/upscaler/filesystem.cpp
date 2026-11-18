@@ -18,11 +18,7 @@ std::vector<FileEntry> RealFileSystem::listDirectory(const std::filesystem::path
     std::vector<FileEntry> entries;
     std::error_code ec;
 
-    std::filesystem::directory_iterator it(
-        path,
-        std::filesystem::directory_options::skip_permission_denied,
-        ec
-    );
+    std::filesystem::directory_iterator it(path, std::filesystem::directory_options::skip_permission_denied, ec);
 
     if (ec) {
         return entries;
@@ -40,4 +36,4 @@ std::vector<FileEntry> RealFileSystem::listDirectory(const std::filesystem::path
     return entries;
 }
 
-} // namespace perfoverlay::upscaler
+}  // namespace perfoverlay::upscaler

@@ -23,13 +23,11 @@ public:
     void poll() override;
     void updateSnapshot(SensorSnapshot& snapshot) const override;
 
-    [[nodiscard]] std::optional<double> getCurrentTempC() const noexcept {
-        return currentTempC_;
-    }
+    [[nodiscard]] std::optional<double> getCurrentTempC() const noexcept { return currentTempC_; }
 
 private:
     std::unique_ptr<ICpuTempProvider> provider_;
     std::optional<double> currentTempC_;
 };
 
-} // namespace perfoverlay::sensors
+}  // namespace perfoverlay::sensors

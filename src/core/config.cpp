@@ -15,25 +15,24 @@ namespace {
 
 std::string toLower(std::string_view str) {
     std::string result(str);
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return result;
 }
 
-} // namespace
+}  // namespace
 
 std::string cornerToString(OverlayCorner corner) {
     switch (corner) {
-    case OverlayCorner::TopRight:
-        return "TopRight";
-    case OverlayCorner::BottomLeft:
-        return "BottomLeft";
-    case OverlayCorner::BottomRight:
-        return "BottomRight";
-    case OverlayCorner::TopLeft:
-    default:
-        return "TopLeft";
+        case OverlayCorner::TopRight:
+            return "TopRight";
+        case OverlayCorner::BottomLeft:
+            return "BottomLeft";
+        case OverlayCorner::BottomRight:
+            return "BottomRight";
+        case OverlayCorner::TopLeft:
+        default:
+            return "TopLeft";
     }
 }
 
@@ -172,20 +171,18 @@ std::string ConfigManager::serializeJson(const AppConfig& c, int indent) {
     j["toggleHotkey"] = c.toggleHotkey;
     j["cpuTempProvider"] = c.cpuTempProvider;
 
-    j["metrics"] = {
-        {"showFps", c.metrics.showFps},
-        {"show1PercentLow", c.metrics.show1PercentLow},
-        {"show01PercentLow", c.metrics.show01PercentLow},
-        {"showFrameTime", c.metrics.showFrameTime},
-        {"showCpuUsage", c.metrics.showCpuUsage},
-        {"showCpuTemp", c.metrics.showCpuTemp},
-        {"showGpuUsage", c.metrics.showGpuUsage},
-        {"showGpuTemp", c.metrics.showGpuTemp},
-        {"showVram", c.metrics.showVram},
-        {"showGpuClock", c.metrics.showGpuClock},
-        {"showGpuPower", c.metrics.showGpuPower},
-        {"showUpscaler", c.metrics.showUpscaler}
-    };
+    j["metrics"] = {{"showFps", c.metrics.showFps},
+                    {"show1PercentLow", c.metrics.show1PercentLow},
+                    {"show01PercentLow", c.metrics.show01PercentLow},
+                    {"showFrameTime", c.metrics.showFrameTime},
+                    {"showCpuUsage", c.metrics.showCpuUsage},
+                    {"showCpuTemp", c.metrics.showCpuTemp},
+                    {"showGpuUsage", c.metrics.showGpuUsage},
+                    {"showGpuTemp", c.metrics.showGpuTemp},
+                    {"showVram", c.metrics.showVram},
+                    {"showGpuClock", c.metrics.showGpuClock},
+                    {"showGpuPower", c.metrics.showGpuPower},
+                    {"showUpscaler", c.metrics.showUpscaler}};
 
     return j.dump(indent);
 }
@@ -200,11 +197,7 @@ ConfigLoadResult ConfigManager::loadFromFile(const std::filesystem::path& filePa
         AppConfig defaultConfig;
         saveToFile(filePath, defaultConfig);
         return ConfigLoadResult{
-            .config = defaultConfig,
-            .createdDefault = true,
-            .recoveredFromCorruption = false,
-            .backupFilePath = ""
-        };
+            .config = defaultConfig, .createdDefault = true, .recoveredFromCorruption = false, .backupFilePath = ""};
     }
 
     std::ifstream inFile(filePath, std::ios::in | std::ios::binary);
@@ -222,31 +215,18 @@ ConfigLoadResult ConfigManager::loadFromFile(const std::filesystem::path& filePa
 
     if (parseJson(content, loadedConfig)) {
         return ConfigLoadResult{
-            .config = loadedConfig,
-            .createdDefault = false,
-            .recoveredFromCorruption = false,
-            .backupFilePath = ""
-        };
+            .config = loadedConfig, .createdDefault = false, .recoveredFromCorruption = false, .backupFilePath = ""};
     }
 
     // Corrupted file detected: create a backup copy and reset to defaults
     const std::string backupPath = filePath.string() + ".bak";
-    std::filesystem::copy_file(
-        filePath,
-        backupPath,
-        std::filesystem::copy_options::overwrite_existing,
-        ec
-    );
+    std::filesystem::copy_file(filePath, backupPath, std::filesystem::copy_options::overwrite_existing, ec);
 
     AppConfig freshDefault;
     saveToFile(filePath, freshDefault);
 
     return ConfigLoadResult{
-        .config = freshDefault,
-        .createdDefault = false,
-        .recoveredFromCorruption = true,
-        .backupFilePath = backupPath
-    };
+        .config = freshDefault, .createdDefault = false, .recoveredFromCorruption = true, .backupFilePath = backupPath};
 }
 
 bool ConfigManager::saveToFile(const std::filesystem::path& filePath, const AppConfig& config) {
@@ -265,4 +245,4 @@ bool ConfigManager::saveToFile(const std::filesystem::path& filePath, const AppC
     return outFile.good();
 }
 
-} // namespace perfoverlay::core
+}  // namespace perfoverlay::core

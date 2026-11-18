@@ -1,12 +1,12 @@
 #include "ui/overlay_window.hpp"
 
 #include <d3d11.h>
-#include <dxgi.h>
 #include <dwmapi.h>
+#include <dxgi.h>
 
 #include <imgui.h>
-#include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+#include <imgui_impl_win32.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -17,10 +17,9 @@ namespace {
 constexpr wchar_t WINDOW_CLASS_NAME[] = L"perfoverlay_window_class";
 constexpr int HOTKEY_ID_F10 = 0x1010;
 
-} // namespace
+}  // namespace
 
-OverlayWindow::OverlayWindow(const OverlayConfig& config)
-    : config_(config) {}
+OverlayWindow::OverlayWindow(const OverlayConfig& config) : config_(config) {}
 
 OverlayWindow::~OverlayWindow() {
     shutdown();
@@ -74,27 +73,11 @@ bool OverlayWindow::initWindow() {
     RegisterClassExW(&wc);
 
     // Click-through, transparent, always on top, no taskbar button, no focus theft
-    const DWORD exStyle = WS_EX_LAYERED |
-                          WS_EX_TRANSPARENT |
-                          WS_EX_TOPMOST |
-                          WS_EX_TOOLWINDOW |
-                          WS_EX_NOACTIVATE;
+    const DWORD exStyle = WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
     const DWORD style = WS_POPUP;
 
-    hwnd_ = CreateWindowExW(
-        exStyle,
-        WINDOW_CLASS_NAME,
-        L"perfoverlay",
-        style,
-        config_.offsetX,
-        config_.offsetY,
-        config_.windowWidth,
-        config_.windowHeight,
-        nullptr,
-        nullptr,
-        wc.hInstance,
-        this
-    );
+    hwnd_ = CreateWindowExW(exStyle, WINDOW_CLASS_NAME, L"perfoverlay", style, config_.offsetX, config_.offsetY,
+                            config_.windowWidth, config_.windowHeight, nullptr, nullptr, wc.hInstance, this);
 
     if (!hwnd_) {
         return false;
@@ -137,37 +120,15 @@ bool OverlayWindow::initD3D() {
         D3D_FEATURE_LEVEL_10_0,
     };
 
-    HRESULT hr = D3D11CreateDeviceAndSwapChain(
-        nullptr,
-        D3D_DRIVER_TYPE_HARDWARE,
-        nullptr,
-        createDeviceFlags,
-        featureLevelArray,
-        2,
-        D3D11_SDK_VERSION,
-        &sd,
-        &swapChain_,
-        &d3dDevice_,
-        &featureLevel,
-        &d3dContext_
-    );
+    HRESULT hr =
+        D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray,
+                                      2, D3D11_SDK_VERSION, &sd, &swapChain_, &d3dDevice_, &featureLevel, &d3dContext_);
 
     if (FAILED(hr)) {
         // Fallback to WARP software rasterizer if hardware device is unavailable
-        hr = D3D11CreateDeviceAndSwapChain(
-            nullptr,
-            D3D_DRIVER_TYPE_WARP,
-            nullptr,
-            createDeviceFlags,
-            featureLevelArray,
-            2,
-            D3D11_SDK_VERSION,
-            &sd,
-            &swapChain_,
-            &d3dDevice_,
-            &featureLevel,
-            &d3dContext_
-        );
+        hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray,
+                                           2, D3D11_SDK_VERSION, &sd, &swapChain_, &d3dDevice_, &featureLevel,
+                                           &d3dContext_);
         if (FAILED(hr)) {
             return false;
         }
@@ -212,7 +173,7 @@ bool OverlayWindow::initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr; // Do not save settings to disk
+    io.IniFilename = nullptr;  // Do not save settings to disk
 
     ImGui::StyleColorsDark();
 
@@ -249,7 +210,7 @@ bool OverlayWindow::pollMessages() {
 
 void OverlayWindow::setConfig(const core::AppConfig& config) {
     config_ = config;
-    currentMonitor_ = nullptr; // Force monitor recalculation
+    currentMonitor_ = nullptr;  // Force monitor recalculation
     if (hwnd_) {
         updateMonitorPosition(GetForegroundWindow());
     }
@@ -277,34 +238,27 @@ void OverlayWindow::updateMonitorPosition(HWND targetHwnd) {
             int newY = mi.rcMonitor.top + config_.offsetY;
 
             switch (config_.corner) {
-            case core::OverlayCorner::TopRight:
-                newX = mi.rcMonitor.right - config_.windowWidth - config_.offsetX;
-                newY = mi.rcMonitor.top + config_.offsetY;
-                break;
-            case core::OverlayCorner::BottomLeft:
-                newX = mi.rcMonitor.left + config_.offsetX;
-                newY = mi.rcMonitor.bottom - config_.windowHeight - config_.offsetY;
-                break;
-            case core::OverlayCorner::BottomRight:
-                newX = mi.rcMonitor.right - config_.windowWidth - config_.offsetX;
-                newY = mi.rcMonitor.bottom - config_.windowHeight - config_.offsetY;
-                break;
-            case core::OverlayCorner::TopLeft:
-            default:
-                newX = mi.rcMonitor.left + config_.offsetX;
-                newY = mi.rcMonitor.top + config_.offsetY;
-                break;
+                case core::OverlayCorner::TopRight:
+                    newX = mi.rcMonitor.right - config_.windowWidth - config_.offsetX;
+                    newY = mi.rcMonitor.top + config_.offsetY;
+                    break;
+                case core::OverlayCorner::BottomLeft:
+                    newX = mi.rcMonitor.left + config_.offsetX;
+                    newY = mi.rcMonitor.bottom - config_.windowHeight - config_.offsetY;
+                    break;
+                case core::OverlayCorner::BottomRight:
+                    newX = mi.rcMonitor.right - config_.windowWidth - config_.offsetX;
+                    newY = mi.rcMonitor.bottom - config_.windowHeight - config_.offsetY;
+                    break;
+                case core::OverlayCorner::TopLeft:
+                default:
+                    newX = mi.rcMonitor.left + config_.offsetX;
+                    newY = mi.rcMonitor.top + config_.offsetY;
+                    break;
             }
 
-            SetWindowPos(
-                hwnd_,
-                HWND_TOPMOST,
-                newX,
-                newY,
-                config_.windowWidth,
-                config_.windowHeight,
-                SWP_NOACTIVATE | SWP_NOZORDER
-            );
+            SetWindowPos(hwnd_, HWND_TOPMOST, newX, newY, config_.windowWidth, config_.windowHeight,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
         }
     }
 }
@@ -324,15 +278,11 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
 
     // Fill overlay client area
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(
-        ImVec2(static_cast<float>(config_.windowWidth), static_cast<float>(config_.windowHeight)),
-        ImGuiCond_Always
-    );
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(config_.windowWidth), static_cast<float>(config_.windowHeight)),
+                             ImGuiCond_Always);
 
-    const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration |
-                                         ImGuiWindowFlags_NoSavedSettings |
-                                         ImGuiWindowFlags_NoFocusOnAppearing |
-                                         ImGuiWindowFlags_NoNav |
+    const ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
+                                         ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
                                          ImGuiWindowFlags_NoMove;
 
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.06f, 0.08f, config_.backgroundAlpha));
@@ -402,7 +352,8 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         if (showCpu) {
             if (config_.metrics.showCpuUsage) {
                 if (snapshot.sensors.cpuUsagePercent.has_value()) {
-                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CPU: %.1f %%", *snapshot.sensors.cpuUsagePercent);
+                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CPU: %.1f %%",
+                                       *snapshot.sensors.cpuUsagePercent);
                 } else {
                     ImGui::TextDisabled("CPU: N/A");
                 }
@@ -423,7 +374,8 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         if (showGpu) {
             if (config_.metrics.showGpuUsage) {
                 if (snapshot.sensors.gpuUsagePercent.has_value()) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.3f, 1.0f), "GPU: %.1f %%", *snapshot.sensors.gpuUsagePercent);
+                    ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.3f, 1.0f), "GPU: %.1f %%",
+                                       *snapshot.sensors.gpuUsagePercent);
                 } else {
                     ImGui::TextDisabled("GPU: N/A");
                 }
@@ -466,7 +418,8 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         if (config_.metrics.showUpscaler) {
             ImGui::Separator();
             if (snapshot.upscaler.has_value() && snapshot.upscaler->anyDetected()) {
-                ImGui::TextColored(ImVec4(0.75f, 0.55f, 1.0f, 1.0f), "Upscaler: %s", snapshot.upscaler->formatSummary().c_str());
+                ImGui::TextColored(ImVec4(0.75f, 0.55f, 1.0f, 1.0f), "Upscaler: %s",
+                                   snapshot.upscaler->formatSummary().c_str());
                 ImGui::TextDisabled("Detected in game files");
             } else if (snapshot.hasActiveGame) {
                 ImGui::TextDisabled("Upscaler: None detected");
@@ -487,7 +440,7 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
     d3dContext_->OMSetRenderTargets(1, &renderTargetView_, nullptr);
     d3dContext_->ClearRenderTargetView(renderTargetView_, clearColor);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-    swapChain_->Present(1, 0); // VSync enabled to throttle render loop
+    swapChain_->Present(1, 0);  // VSync enabled to throttle render loop
 }
 
 void OverlayWindow::setVisible(bool visible) {
@@ -520,19 +473,19 @@ LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     }
 
     switch (msg) {
-    case WM_HOTKEY:
-        if (wParam == HOTKEY_ID_F10 && self) {
-            self->toggleVisibility();
-            return 0;
-        }
-        break;
+        case WM_HOTKEY:
+            if (wParam == HOTKEY_ID_F10 && self) {
+                self->toggleVisibility();
+                return 0;
+            }
+            break;
 
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
     }
 
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-} // namespace perfoverlay::ui
+}  // namespace perfoverlay::ui
