@@ -42,9 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic default creation, partial JSON merging, and automatic corrupted-file recovery with `.bak` backups.
   - Windows Notification Area (System Tray) icon with right-click menu (Toggle Overlay, Settings, Open Config File, Exit).
   - Standalone interactive Dear ImGui `SettingsWindow` accessible via tray menu or `--settings` CLI flag.
-- **Build & CI / Packaging**:
+- **Build & Packaging**:
   - Pure C++20 and CMake 3.25+ build system with vcpkg manifest mode.
   - Static CRT (`/MT`) linkage for self-contained single-executable distribution.
   - Comprehensive unit test suite with 45 Catch2 tests covering math, sensors, ETW parsers, config recovery, and upscaler scanners.
-  - GitHub Actions CI workflow verifying MSVC build, tests, and clang-format style checks.
-  - Automated GitHub Release packaging workflow on `v*` tag pushes.
