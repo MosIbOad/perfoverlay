@@ -66,7 +66,7 @@ bool SettingsWindow::init(HWND /*parentHwnd*/) {
     wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
     RegisterClassExW(&wc);
 
-    hwnd_ = CreateWindowExW(0, wc.lpszClassName, L"perfoverlay - Ayarlar (Settings)",
+    hwnd_ = CreateWindowExW(0, wc.lpszClassName, L"perfoverlay - Settings",
                             WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT,
                             SETTINGS_WIDTH, SETTINGS_HEIGHT, nullptr, nullptr, wc.hInstance, nullptr);
 
@@ -210,12 +210,12 @@ bool SettingsWindow::render() {
         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
 
     if (ImGui::Begin("SettingsPanel", nullptr, flags)) {
-        ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "PERFOVERLAY AYARLARI");
+        ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "PERFOVERLAY SETTINGS");
         ImGui::Separator();
 
         // 1. Metric Visibility
-        if (ImGui::CollapsingHeader("Gorunecek Metrikler (Metrics)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Checkbox("FPS (Anlik & Ortalama)", &workingConfig_.metrics.showFps);
+        if (ImGui::CollapsingHeader("Visible Metrics", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::Checkbox("FPS (Current & Average)", &workingConfig_.metrics.showFps);
             ImGui::SameLine(240);
             ImGui::Checkbox("Frame Time (ms)", &workingConfig_.metrics.showFrameTime);
 
@@ -224,48 +224,47 @@ bool SettingsWindow::render() {
             ImGui::Checkbox("0.1% Low FPS", &workingConfig_.metrics.show01PercentLow);
 
             ImGui::Separator();
-            ImGui::Checkbox("CPU Kullanimi (%)", &workingConfig_.metrics.showCpuUsage);
+            ImGui::Checkbox("CPU Usage (%)", &workingConfig_.metrics.showCpuUsage);
             ImGui::SameLine(240);
-            ImGui::Checkbox("CPU Sicakligi (C)", &workingConfig_.metrics.showCpuTemp);
+            ImGui::Checkbox("CPU Temperature (C)", &workingConfig_.metrics.showCpuTemp);
 
-            ImGui::Checkbox("GPU Kullanimi (%)", &workingConfig_.metrics.showGpuUsage);
+            ImGui::Checkbox("GPU Usage (%)", &workingConfig_.metrics.showGpuUsage);
             ImGui::SameLine(240);
-            ImGui::Checkbox("GPU Sicakligi (C)", &workingConfig_.metrics.showGpuTemp);
+            ImGui::Checkbox("GPU Temperature (C)", &workingConfig_.metrics.showGpuTemp);
 
-            ImGui::Checkbox("VRAM Kullanimi (MB)", &workingConfig_.metrics.showVram);
+            ImGui::Checkbox("VRAM Usage (MB)", &workingConfig_.metrics.showVram);
             ImGui::SameLine(240);
-            ImGui::Checkbox("GPU Saat Hizi (MHz)", &workingConfig_.metrics.showGpuClock);
+            ImGui::Checkbox("GPU Clock Speed (MHz)", &workingConfig_.metrics.showGpuClock);
 
-            ImGui::Checkbox("GPU Guc Tuketimi (W)", &workingConfig_.metrics.showGpuPower);
+            ImGui::Checkbox("GPU Power (W)", &workingConfig_.metrics.showGpuPower);
             ImGui::SameLine(240);
             ImGui::Checkbox("Upscaler (DLSS/FSR/XeSS)", &workingConfig_.metrics.showUpscaler);
         }
 
         // 2. Overlay Placement
-        if (ImGui::CollapsingHeader("Konum ve Boyut (Placement & Sizing)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            const char* corners[] = {"Sol Ust (Top-Left)", "Sag Ust (Top-Right)", "Sol Alt (Bottom-Left)",
-                                     "Sag Alt (Bottom-Right)"};
+        if (ImGui::CollapsingHeader("Placement & Sizing", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const char* corners[] = {"Top-Left", "Top-Right", "Bottom-Left", "Bottom-Right"};
             int currentCorner = static_cast<int>(workingConfig_.corner);
-            if (ImGui::Combo("Ekran Kosesi", &currentCorner, corners, IM_ARRAYSIZE(corners))) {
+            if (ImGui::Combo("Screen Corner", &currentCorner, corners, IM_ARRAYSIZE(corners))) {
                 workingConfig_.corner = static_cast<core::OverlayCorner>(currentCorner);
             }
 
             ImGui::SliderInt("Offset X (px)", &workingConfig_.offsetX, 0, 300);
             ImGui::SliderInt("Offset Y (px)", &workingConfig_.offsetY, 0, 300);
-            ImGui::SliderInt("Genislik (px)", &workingConfig_.windowWidth, 260, 500);
-            ImGui::SliderInt("Yukseklik (px)", &workingConfig_.windowHeight, 180, 450);
+            ImGui::SliderInt("Width (px)", &workingConfig_.windowWidth, 260, 500);
+            ImGui::SliderInt("Height (px)", &workingConfig_.windowHeight, 180, 450);
         }
 
         // 3. Aesthetics & Hardware Providers
-        if (ImGui::CollapsingHeader("Gorunum ve Donanim (Aesthetics & Hardware)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::SliderFloat("Arka Plan Saydamligi", &workingConfig_.backgroundAlpha, 0.1f, 1.0f, "%.2f");
+        if (ImGui::CollapsingHeader("Appearance & Hardware", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::SliderFloat("Background Opacity", &workingConfig_.backgroundAlpha, 0.1f, 1.0f, "%.2f");
 
             int fpsPoll = static_cast<int>(workingConfig_.fpsPollIntervalMs);
-            if (ImGui::SliderInt("FPS Yenileme Araligi (ms)", &fpsPoll, 20, 500, "%d ms")) {
+            if (ImGui::SliderInt("FPS Polling Interval (ms)", &fpsPoll, 20, 500, "%d ms")) {
                 workingConfig_.fpsPollIntervalMs = static_cast<uint32_t>(fpsPoll);
             }
 
-            const char* providers[] = {"Otomatik (Auto)", "LibreHardwareMonitor (HTTP)", "Devre Disi (Disabled)"};
+            const char* providers[] = {"Automatic (Auto)", "LibreHardwareMonitor (HTTP)", "Disabled"};
             int providerIndex = 0;
             if (workingConfig_.cpuTempProvider == "librehardwaremonitor") {
                 providerIndex = 1;
@@ -273,7 +272,7 @@ bool SettingsWindow::render() {
                 providerIndex = 2;
             }
 
-            if (ImGui::Combo("CPU Sicaklik Saglayicisi", &providerIndex, providers, IM_ARRAYSIZE(providers))) {
+            if (ImGui::Combo("CPU Temperature Provider", &providerIndex, providers, IM_ARRAYSIZE(providers))) {
                 if (providerIndex == 0)
                     workingConfig_.cpuTempProvider = "auto";
                 else if (providerIndex == 1)
@@ -282,14 +281,14 @@ bool SettingsWindow::render() {
                     workingConfig_.cpuTempProvider = "disabled";
             }
 
-            ImGui::TextDisabled("Kisayol tusu: %s (Varsayilan F10)", workingConfig_.toggleHotkey.c_str());
+            ImGui::TextDisabled("Toggle hotkey: %s (Default: F10)", workingConfig_.toggleHotkey.c_str());
         }
 
         ImGui::Separator();
         ImGui::Spacing();
 
         // Buttons
-        if (ImGui::Button("Kaydet & Uygula", ImVec2(130, 32))) {
+        if (ImGui::Button("Save & Apply", ImVec2(130, 32))) {
             core::ConfigManager::saveToFile(core::ConfigManager::getDefaultConfigPath(), workingConfig_);
             if (onConfigApplied) {
                 onConfigApplied(workingConfig_);
@@ -297,12 +296,12 @@ bool SettingsWindow::render() {
         }
 
         ImGui::SameLine();
-        if (ImGui::Button("Varsayilana Sifirla", ImVec2(140, 32))) {
+        if (ImGui::Button("Reset to Defaults", ImVec2(140, 32))) {
             workingConfig_ = core::AppConfig{};
         }
 
         ImGui::SameLine();
-        if (ImGui::Button("Kapat", ImVec2(90, 32))) {
+        if (ImGui::Button("Close", ImVec2(90, 32))) {
             hide();
         }
     }

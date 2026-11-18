@@ -45,11 +45,11 @@ void TrayIcon::showContextMenu(HWND hwnd) {
         return;
     }
 
-    AppendMenuW(hMenu, MF_STRING, ID_TRAY_TOGGLE, L"G\u00f6ster / Gizle");
-    AppendMenuW(hMenu, MF_STRING, ID_TRAY_SETTINGS, L"Ayarlar...");
-    AppendMenuW(hMenu, MF_STRING, ID_TRAY_OPEN_CONFIG, L"Ayarlar dosyas\u0131n\u0131 a\u00e7");
+    AppendMenuW(hMenu, MF_STRING, ID_TRAY_TOGGLE, L"Show / Hide Overlay");
+    AppendMenuW(hMenu, MF_STRING, ID_TRAY_SETTINGS, L"Settings...");
+    AppendMenuW(hMenu, MF_STRING, ID_TRAY_OPEN_CONFIG, L"Open Config File");
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"\u00c7\u0131k\u0131\u015f");
+    AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");
 
     SetForegroundWindow(hwnd);
 
