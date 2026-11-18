@@ -88,8 +88,8 @@ bool OverlayWindow::initWindow() {
         style,
         config_.offsetX,
         config_.offsetY,
-        config_.initialWidth,
-        config_.initialHeight,
+        config_.windowWidth,
+        config_.windowHeight,
         nullptr,
         nullptr,
         wc.hInstance,
@@ -117,8 +117,8 @@ bool OverlayWindow::initWindow() {
 bool OverlayWindow::initD3D() {
     DXGI_SWAP_CHAIN_DESC sd{};
     sd.BufferCount = 2;
-    sd.BufferDesc.Width = config_.initialWidth;
-    sd.BufferDesc.Height = config_.initialHeight;
+    sd.BufferDesc.Width = config_.windowWidth;
+    sd.BufferDesc.Height = config_.windowHeight;
     sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     sd.BufferDesc.RefreshRate.Numerator = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
@@ -247,6 +247,14 @@ bool OverlayWindow::pollMessages() {
     return isRunning_;
 }
 
+void OverlayWindow::setConfig(const core::AppConfig& config) {
+    config_ = config;
+    currentMonitor_ = nullptr; // Force monitor recalculation
+    if (hwnd_) {
+        updateMonitorPosition(GetForegroundWindow());
+    }
+}
+
 void OverlayWindow::updateMonitorPosition(HWND targetHwnd) {
     if (!hwnd_) {
         return;
@@ -265,15 +273,36 @@ void OverlayWindow::updateMonitorPosition(HWND targetHwnd) {
         MONITORINFO mi{};
         mi.cbSize = sizeof(MONITORINFO);
         if (GetMonitorInfoA(targetMonitor, &mi)) {
-            const int newX = mi.rcMonitor.left + config_.offsetX;
-            const int newY = mi.rcMonitor.top + config_.offsetY;
+            int newX = mi.rcMonitor.left + config_.offsetX;
+            int newY = mi.rcMonitor.top + config_.offsetY;
+
+            switch (config_.corner) {
+            case core::OverlayCorner::TopRight:
+                newX = mi.rcMonitor.right - config_.windowWidth - config_.offsetX;
+                newY = mi.rcMonitor.top + config_.offsetY;
+                break;
+            case core::OverlayCorner::BottomLeft:
+                newX = mi.rcMonitor.left + config_.offsetX;
+                newY = mi.rcMonitor.bottom - config_.windowHeight - config_.offsetY;
+                break;
+            case core::OverlayCorner::BottomRight:
+                newX = mi.rcMonitor.right - config_.windowWidth - config_.offsetX;
+                newY = mi.rcMonitor.bottom - config_.windowHeight - config_.offsetY;
+                break;
+            case core::OverlayCorner::TopLeft:
+            default:
+                newX = mi.rcMonitor.left + config_.offsetX;
+                newY = mi.rcMonitor.top + config_.offsetY;
+                break;
+            }
+
             SetWindowPos(
                 hwnd_,
                 HWND_TOPMOST,
                 newX,
                 newY,
-                config_.initialWidth,
-                config_.initialHeight,
+                config_.windowWidth,
+                config_.windowHeight,
                 SWP_NOACTIVATE | SWP_NOZORDER
             );
         }
@@ -296,7 +325,7 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
     // Fill overlay client area
     ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(
-        ImVec2(static_cast<float>(config_.initialWidth), static_cast<float>(config_.initialHeight)),
+        ImVec2(static_cast<float>(config_.windowWidth), static_cast<float>(config_.windowHeight)),
         ImGuiCond_Always
     );
 
@@ -306,7 +335,7 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
                                          ImGuiWindowFlags_NoNav |
                                          ImGuiWindowFlags_NoMove;
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.06f, 0.08f, 0.78f)); // Dark translucent glass
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.06f, 0.08f, config_.backgroundAlpha));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.25f, 0.30f, 0.50f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
@@ -316,7 +345,7 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         // Header
         ImGui::TextColored(ImVec4(0.35f, 0.85f, 1.0f, 1.0f), "PERFOVERLAY");
         ImGui::SameLine();
-        ImGui::TextDisabled("| F10: toggle");
+        ImGui::TextDisabled("| %s: toggle", config_.toggleHotkey.c_str());
 
         if (snapshot.hasActiveGame && snapshot.activeGame.has_value()) {
             ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "Game: %s", snapshot.activeGame->processName.c_str());
@@ -326,84 +355,124 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         ImGui::Separator();
 
         // Frame timing & FPS
-        if (snapshot.frameStats.has_value() && snapshot.frameStats->avgFps > 0.0) {
-            const auto& f = *snapshot.frameStats;
-            ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "FPS: %.1f", f.currentFps);
-            ImGui::SameLine(140.0f);
-            ImGui::TextDisabled("Avg: %.1f", f.avgFps);
+        const bool showAnyFps = config_.metrics.showFps || config_.metrics.show1PercentLow ||
+                                config_.metrics.show01PercentLow || config_.metrics.showFrameTime;
+        if (showAnyFps) {
+            if (snapshot.frameStats.has_value() && snapshot.frameStats->avgFps > 0.0) {
+                const auto& f = *snapshot.frameStats;
+                if (config_.metrics.showFps) {
+                    ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.4f, 1.0f), "FPS: %.1f", f.currentFps);
+                    ImGui::SameLine(140.0f);
+                    ImGui::TextDisabled("Avg: %.1f", f.avgFps);
+                }
 
-            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "1%% Low: %.1f", f.p1LowFps);
-            ImGui::SameLine(140.0f);
-            ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "0.1%% Low: %.1f", f.p01LowFps);
+                if (config_.metrics.show1PercentLow || config_.metrics.show01PercentLow) {
+                    if (config_.metrics.show1PercentLow) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "1%% Low: %.1f", f.p1LowFps);
+                        if (config_.metrics.show01PercentLow) {
+                            ImGui::SameLine(140.0f);
+                        }
+                    }
+                    if (config_.metrics.show01PercentLow) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "0.1%% Low: %.1f", f.p01LowFps);
+                    }
+                }
 
-            ImGui::Text("Frametime: %.2f ms", f.avgFrameTimeMs);
-            ImGui::SameLine(140.0f);
-            ImGui::TextDisabled("p99: %.2f ms", f.p99FrameTimeMs);
-        } else {
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "FPS: N/A");
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "1%% Low: N/A  |  0.1%% Low: N/A");
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Frametime: N/A");
+                if (config_.metrics.showFrameTime) {
+                    ImGui::Text("Frametime: %.2f ms", f.avgFrameTimeMs);
+                    ImGui::SameLine(140.0f);
+                    ImGui::TextDisabled("p99: %.2f ms", f.p99FrameTimeMs);
+                }
+            } else {
+                if (config_.metrics.showFps) {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "FPS: N/A");
+                }
+                if (config_.metrics.show1PercentLow || config_.metrics.show01PercentLow) {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "1%% Low: N/A  |  0.1%% Low: N/A");
+                }
+                if (config_.metrics.showFrameTime) {
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Frametime: N/A");
+                }
+            }
+            ImGui::Separator();
         }
-        ImGui::Separator();
 
         // Hardware Telemetry
-        // CPU Usage & Temperature
-        if (snapshot.sensors.cpuUsagePercent.has_value()) {
-            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CPU: %.1f %%", *snapshot.sensors.cpuUsagePercent);
-        } else {
-            ImGui::TextDisabled("CPU: N/A");
-        }
-
-        ImGui::SameLine(140.0f);
-        if (snapshot.sensors.cpuTempC.has_value()) {
-            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Temp: %.0f C", *snapshot.sensors.cpuTempC);
-        } else {
-            ImGui::TextDisabled("Temp: N/A");
-        }
-
-        // GPU Usage & Temperature
-        if (snapshot.sensors.gpuUsagePercent.has_value()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.3f, 1.0f), "GPU: %.1f %%", *snapshot.sensors.gpuUsagePercent);
-        } else {
-            ImGui::TextDisabled("GPU: N/A");
-        }
-
-        ImGui::SameLine(140.0f);
-        if (snapshot.sensors.gpuTempC.has_value()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "Temp: %.0f C", *snapshot.sensors.gpuTempC);
-        } else {
-            ImGui::TextDisabled("Temp: N/A");
-        }
-
-        // VRAM
-        if (snapshot.sensors.gpuVramUsedMB.has_value() && snapshot.sensors.gpuVramTotalMB.has_value()) {
-            ImGui::Text("VRAM: %.0f / %.0f MB", *snapshot.sensors.gpuVramUsedMB, *snapshot.sensors.gpuVramTotalMB);
-        } else if (snapshot.sensors.gpuVramUsedMB.has_value()) {
-            ImGui::Text("VRAM: %.0f MB", *snapshot.sensors.gpuVramUsedMB);
-        } else {
-            ImGui::TextDisabled("VRAM: N/A");
-        }
-
-        // Clock & Power (if available)
-        if (snapshot.sensors.gpuClockMHz.has_value()) {
-            ImGui::TextDisabled("Clock: %.0f MHz", *snapshot.sensors.gpuClockMHz);
-        }
-        if (snapshot.sensors.gpuPowerW.has_value()) {
-            if (snapshot.sensors.gpuClockMHz.has_value()) {
-                ImGui::SameLine(140.0f);
+        const bool showCpu = config_.metrics.showCpuUsage || config_.metrics.showCpuTemp;
+        if (showCpu) {
+            if (config_.metrics.showCpuUsage) {
+                if (snapshot.sensors.cpuUsagePercent.has_value()) {
+                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CPU: %.1f %%", *snapshot.sensors.cpuUsagePercent);
+                } else {
+                    ImGui::TextDisabled("CPU: N/A");
+                }
+                if (config_.metrics.showCpuTemp) {
+                    ImGui::SameLine(140.0f);
+                }
             }
-            ImGui::TextDisabled("Power: %.1f W", *snapshot.sensors.gpuPowerW);
+            if (config_.metrics.showCpuTemp) {
+                if (snapshot.sensors.cpuTempC.has_value()) {
+                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Temp: %.0f C", *snapshot.sensors.cpuTempC);
+                } else {
+                    ImGui::TextDisabled("Temp: N/A");
+                }
+            }
+        }
+
+        const bool showGpu = config_.metrics.showGpuUsage || config_.metrics.showGpuTemp;
+        if (showGpu) {
+            if (config_.metrics.showGpuUsage) {
+                if (snapshot.sensors.gpuUsagePercent.has_value()) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.3f, 1.0f), "GPU: %.1f %%", *snapshot.sensors.gpuUsagePercent);
+                } else {
+                    ImGui::TextDisabled("GPU: N/A");
+                }
+                if (config_.metrics.showGpuTemp) {
+                    ImGui::SameLine(140.0f);
+                }
+            }
+            if (config_.metrics.showGpuTemp) {
+                if (snapshot.sensors.gpuTempC.has_value()) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "Temp: %.0f C", *snapshot.sensors.gpuTempC);
+                } else {
+                    ImGui::TextDisabled("Temp: N/A");
+                }
+            }
+        }
+
+        if (config_.metrics.showVram) {
+            if (snapshot.sensors.gpuVramUsedMB.has_value() && snapshot.sensors.gpuVramTotalMB.has_value()) {
+                ImGui::Text("VRAM: %.0f / %.0f MB", *snapshot.sensors.gpuVramUsedMB, *snapshot.sensors.gpuVramTotalMB);
+            } else if (snapshot.sensors.gpuVramUsedMB.has_value()) {
+                ImGui::Text("VRAM: %.0f MB", *snapshot.sensors.gpuVramUsedMB);
+            } else {
+                ImGui::TextDisabled("VRAM: N/A");
+            }
+        }
+
+        if (config_.metrics.showGpuClock || config_.metrics.showGpuPower) {
+            if (config_.metrics.showGpuClock && snapshot.sensors.gpuClockMHz.has_value()) {
+                ImGui::TextDisabled("Clock: %.0f MHz", *snapshot.sensors.gpuClockMHz);
+                if (config_.metrics.showGpuPower && snapshot.sensors.gpuPowerW.has_value()) {
+                    ImGui::SameLine(140.0f);
+                }
+            }
+            if (config_.metrics.showGpuPower && snapshot.sensors.gpuPowerW.has_value()) {
+                ImGui::TextDisabled("Power: %.1f W", *snapshot.sensors.gpuPowerW);
+            }
         }
 
         // Upscaler Telemetry (Detected in game files)
-        ImGui::Separator();
-        if (snapshot.upscaler.has_value() && snapshot.upscaler->anyDetected()) {
-            ImGui::TextColored(ImVec4(0.75f, 0.55f, 1.0f, 1.0f), "Upscaler: %s", snapshot.upscaler->formatSummary().c_str());
-            ImGui::TextDisabled("Detected in game files");
-        } else if (snapshot.hasActiveGame) {
-            ImGui::TextDisabled("Upscaler: None detected");
-        } else {
-            ImGui::TextDisabled("Upscaler: N/A");
+        if (config_.metrics.showUpscaler) {
+            ImGui::Separator();
+            if (snapshot.upscaler.has_value() && snapshot.upscaler->anyDetected()) {
+                ImGui::TextColored(ImVec4(0.75f, 0.55f, 1.0f, 1.0f), "Upscaler: %s", snapshot.upscaler->formatSummary().c_str());
+                ImGui::TextDisabled("Detected in game files");
+            } else if (snapshot.hasActiveGame) {
+                ImGui::TextDisabled("Upscaler: None detected");
+            } else {
+                ImGui::TextDisabled("Upscaler: N/A");
+            }
         }
     }
     ImGui::End();
@@ -446,6 +515,9 @@ LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     }
 
     auto* self = reinterpret_cast<OverlayWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    if (self && self->messageHook_ && self->messageHook_(hwnd, msg, wParam, lParam)) {
+        return 0;
+    }
 
     switch (msg) {
     case WM_HOTKEY:

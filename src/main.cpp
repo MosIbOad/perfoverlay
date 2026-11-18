@@ -1,9 +1,18 @@
 #include "capture/etw_present_capture.hpp"
 #include "capture/foreground_tracker.hpp"
+#include "core/config.hpp"
 #include "core/metrics_hub.hpp"
 #include "sensors/sensor_manager.hpp"
 #include "ui/overlay_window.hpp"
+#include "ui/settings_window.hpp"
+#include "ui/tray_icon.hpp"
 #include "upscaler/upscaler_detector.hpp"
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <shellapi.h>
 
 #include <chrono>
 #include <iomanip>
@@ -13,6 +22,7 @@
 int main(int argc, char* argv[]) {
     bool debugMode = false;
     bool headlessMode = false;
+    bool openSettingsOnStart = false;
     int maxFrames = -1; // -1 runs indefinitely
 
     for (int i = 1; i < argc; ++i) {
@@ -21,15 +31,29 @@ int main(int argc, char* argv[]) {
             debugMode = true;
         } else if (arg == "--headless") {
             headlessMode = true;
+        } else if (arg == "--settings") {
+            openSettingsOnStart = true;
         } else if (arg == "-n" && i + 1 < argc) {
             maxFrames = std::stoi(argv[++i]);
         }
     }
 
+    // 0. Load configuration from %APPDATA%\perfoverlay\config.json
+    const auto configPath = perfoverlay::core::ConfigManager::getDefaultConfigPath();
+    const auto configRes = perfoverlay::core::ConfigManager::loadFromFile(configPath);
+    perfoverlay::core::AppConfig appConfig = configRes.config;
+
     if (debugMode) {
         std::cout << "========================================================\n";
         std::cout << " perfoverlay v0.1 - External Overlay (Debug Console)\n";
         std::cout << "========================================================\n";
+        std::cout << "[Config] Path: " << configPath.string() << "\n";
+        if (configRes.createdDefault) {
+            std::cout << "[Config] Created fresh default configuration file.\n";
+        } else if (configRes.recoveredFromCorruption) {
+            std::cout << "[Config Warning] Corrupted config recovered! Backup saved to: "
+                      << configRes.backupFilePath << "\n";
+        }
     }
 
     // 1. Initialize hardware sensor subsystem
@@ -54,12 +78,46 @@ int main(int argc, char* argv[]) {
     perfoverlay::core::MetricsHub hub(&fgTracker, &etwCapture, &sensorManager, &upscalerDetector);
 
     // 6. Initialize Win32 + D3D11 + ImGui Overlay Window
-    perfoverlay::ui::OverlayWindow overlay;
+    perfoverlay::ui::OverlayWindow overlay(appConfig);
+    perfoverlay::ui::SettingsWindow settingsWindow;
+    perfoverlay::ui::TrayIcon trayIcon;
+
     if (!headlessMode) {
         if (!overlay.init()) {
             std::cerr << "[Error] Failed to initialize DirectX 11 transparent overlay window.\n";
             return 1;
         }
+
+        // Initialize Settings dialog window
+        settingsWindow.init(overlay.getHwnd());
+        settingsWindow.onConfigApplied = [&overlay, &appConfig](const perfoverlay::core::AppConfig& cfg) {
+            appConfig = cfg;
+            overlay.setConfig(cfg);
+        };
+
+        if (openSettingsOnStart) {
+            settingsWindow.show(appConfig);
+        }
+
+        // Initialize Windows Notification Area / System Tray Icon
+        trayIcon.init(overlay.getHwnd(), L"perfoverlay");
+        trayIcon.onToggleVisibility = [&overlay]() {
+            overlay.toggleVisibility();
+        };
+        trayIcon.onOpenSettings = [&settingsWindow, &appConfig]() {
+            settingsWindow.show(appConfig);
+        };
+        trayIcon.onOpenConfigFile = [&configPath]() {
+            ShellExecuteW(nullptr, L"open", configPath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        };
+        trayIcon.onExit = [&overlay]() {
+            overlay.shutdown();
+            PostQuitMessage(0);
+        };
+
+        overlay.setMessageHook([&trayIcon](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+            return trayIcon.handleMessage(hwnd, msg, wParam, lParam);
+        });
 
         // Render initial frame with dummy data to verify rendering pipeline
         perfoverlay::core::MetricsSnapshot initialDummy;
@@ -92,7 +150,7 @@ int main(int argc, char* argv[]) {
     hub.start();
 
     if (debugMode) {
-        std::cout << "[Overlay] Running. Press F10 to toggle visibility. Press Ctrl+C to exit.\n";
+        std::cout << "[Overlay] Running. Press " << appConfig.toggleHotkey << " to toggle visibility. Press Ctrl+C to exit.\n";
     }
 
     // Main application render and message loop
@@ -103,6 +161,12 @@ int main(int argc, char* argv[]) {
         if (!headlessMode) {
             if (!overlay.pollMessages()) {
                 break; // WM_QUIT received
+            }
+
+            if (settingsWindow.isVisible()) {
+                if (!settingsWindow.render()) {
+                    break;
+                }
             }
 
             const auto snapshot = hub.getSnapshot();

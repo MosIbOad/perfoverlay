@@ -1,11 +1,13 @@
 #pragma once
 
+#include "core/config.hpp"
 #include "core/metrics_hub.hpp"
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <functional>
 
 struct ID3D11Device;
 struct ID3D11DeviceContext;
@@ -14,12 +16,7 @@ struct ID3D11RenderTargetView;
 
 namespace perfoverlay::ui {
 
-struct OverlayConfig {
-    int initialWidth{340};
-    int initialHeight{285};
-    int offsetX{20};
-    int offsetY{20};
-};
+using OverlayConfig = core::AppConfig;
 
 /**
  * @brief Transparent, click-through, always-on-top external overlay window.
@@ -29,11 +26,12 @@ struct OverlayConfig {
  * - Borderless WS_POPUP with DWM frame extension for per-pixel alpha transparency.
  * - DirectX 11 + Dear ImGui rendering.
  * - Automatic tracking of the monitor hosting the active game window.
+ * - Configurable corner positioning (TopLeft, TopRight, BottomLeft, BottomRight).
  * - Global F10 hotkey to toggle overlay visibility.
  */
 class OverlayWindow {
 public:
-    explicit OverlayWindow(const OverlayConfig& config = {});
+    explicit OverlayWindow(const core::AppConfig& config = {});
     ~OverlayWindow();
 
     OverlayWindow(const OverlayWindow&) = delete;
@@ -59,6 +57,12 @@ public:
     bool pollMessages();
 
     /**
+     * @brief Updates active configuration and re-applies window styling/position.
+     */
+    void setConfig(const core::AppConfig& config);
+    [[nodiscard]] const core::AppConfig& getConfig() const noexcept { return config_; }
+
+    /**
      * @brief Renders one frame of the HUD overlay with the provided metrics snapshot.
      */
     void render(const core::MetricsSnapshot& snapshot);
@@ -74,6 +78,10 @@ public:
     void toggleVisibility();
 
     [[nodiscard]] HWND getHwnd() const noexcept { return hwnd_; }
+
+    void setMessageHook(std::function<bool(HWND, UINT, WPARAM, LPARAM)> hook) {
+        messageHook_ = std::move(hook);
+    }
 
 private:
     bool initWindow();
@@ -97,6 +105,7 @@ private:
     ID3D11DeviceContext* d3dContext_{nullptr};
     IDXGISwapChain* swapChain_{nullptr};
     ID3D11RenderTargetView* renderTargetView_{nullptr};
+    std::function<bool(HWND, UINT, WPARAM, LPARAM)> messageHook_;
 };
 
 } // namespace perfoverlay::ui

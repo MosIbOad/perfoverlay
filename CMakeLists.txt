@@ -20,9 +20,13 @@ find_package(nlohmann_json CONFIG REQUIRED)
 add_library(perfoverlay_core STATIC
     src/core/frame_stats.cpp
     src/core/metrics_hub.cpp
+    src/core/config.cpp
 )
 target_include_directories(perfoverlay_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(perfoverlay_core PUBLIC
+    nlohmann_json::nlohmann_json
 )
 
 # Sensors static library (Hardware telemetry)
@@ -74,9 +78,11 @@ target_link_libraries(perfoverlay_capture PUBLIC
     advapi32
 )
 
-# UI static library (D3D11 + ImGui transparent overlay)
+# UI static library (D3D11 + ImGui transparent overlay & settings)
 add_library(perfoverlay_ui STATIC
     src/ui/overlay_window.cpp
+    src/ui/settings_window.cpp
+    src/ui/tray_icon.cpp
 )
 target_include_directories(perfoverlay_ui PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -87,6 +93,7 @@ target_link_libraries(perfoverlay_ui PUBLIC
     d3d11
     dxgi
     dwmapi
+    shell32
 )
 
 # Upscaler static library (File-based upscaler detection: DLSS, FSR, XeSS)
@@ -124,6 +131,7 @@ add_executable(perfoverlay_tests
     tests/test_capture.cpp
     tests/test_metrics_hub.cpp
     tests/test_upscaler.cpp
+    tests/test_config.cpp
 )
 target_link_libraries(perfoverlay_tests PRIVATE
     perfoverlay_core
@@ -132,6 +140,7 @@ target_link_libraries(perfoverlay_tests PRIVATE
     perfoverlay_upscaler
     perfoverlay_ui
     Catch2::Catch2WithMain
+    shell32
 )
 target_include_directories(perfoverlay_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src

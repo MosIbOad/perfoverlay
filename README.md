@@ -39,6 +39,28 @@ Kullanıcılar CPU sıcaklığını takip etmek istediklerinde, açık kaynaklı
 3. `perfoverlay` otomatik olarak `http://localhost:8085/data.json` uç noktasından CPU paket sıcaklığını okur ve overlay'de gösterir.
 4. LibreHardwareMonitor çalıştırılmadığında veya sunucu kapalı olduğunda, overlay CPU sıcaklığını sessizce `Temp: N/A` olarak gösterir; hiçbir performans kaybı veya takılma yaşanmaz.
 
+## Yapılandırma & Sistem Tepsisi (Configuration & System Tray)
+
+Tüm kullanıcı tercihleri `%APPDATA%\perfoverlay\config.json` dosyasında saklanır.
+
+### Ayar Alanları
+- **Konum ve Boyut**: `corner` ("TopLeft", "TopRight", "BottomLeft", "BottomRight"), `offsetX`, `offsetY`, `windowWidth`, `windowHeight`.
+- **Görsel Tercihler**: `backgroundAlpha` (0.05 - 1.0 arası saydamlık), `fontScale`.
+- **Görünecek Metrikler (`metrics`)**: `showFps`, `show1PercentLow`, `show01PercentLow`, `showFrameTime`, `showCpuUsage`, `showCpuTemp`, `showGpuUsage`, `showGpuTemp`, `showVram`, `showGpuClock`, `showGpuPower`, `showUpscaler` (her biri `true`/`false`).
+- **Kısayol ve Sağlayıcı**: `toggleHotkey` (varsayılan "F10"), `cpuTempProvider` ("auto", "librehardwaremonitor", "disabled").
+
+### Bozuk/Eksik Dosya Koruması
+- `config.json` mevcut değilse uygulama ilk çalıştığında varsayılan ayarlarla dosyayı otomatik olarak oluşturur.
+- Dosya bozulursa veya geçersiz JSON syntax'ı içerirse, çökme yaşanmaz; bozuk dosya `config.json.bak` olarak yedeklenir ve yerine temiz varsayılan yapılandırma yazılarak uygulama sorunsuz başlatılır.
+
+### Sistem Tepsisi (Tray Icon) & Ayarlar Penceresi
+- Görev çubuğu bildirim alanındaki simgeye sağ tıklandığında:
+  - **Göster / Gizle**: Overlay penceresini açar/kapatır.
+  - **Ayarlar...**: Overlay click-through olduğu için fare tıklamalarını arkadaki oyuna iletir; bu nedenle ayarları rahatça değiştirebilmeniz için ImGui tabanlı, etkileşimli ayrı bir ayarlar penceresi açılır.
+  - **Ayarlar dosyasını aç**: `config.json` dosyasını sistemin varsayılan metin editörüyle açar.
+  - **Çıkış**: Uygulamayı kapatır.
+- Doğrudan ayarlar penceresiyle başlatmak için: `perfoverlay.exe --settings` kullanılabilir.
+
 ## Metrics & 1% / 0.1% Low Methodology
 
 `perfoverlay` implements the **Average of the Worst 1% / 0.1%** (Expected Shortfall / 1% Average Low) method for reporting 1% Low and 0.1% Low FPS.
