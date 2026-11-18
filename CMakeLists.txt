@@ -13,6 +13,8 @@ if(MSVC)
     add_compile_options(/W4 /permissive-)
 endif()
 
+find_package(imgui CONFIG REQUIRED)
+
 # Core static library (OS-agnostic, unit-testable)
 add_library(perfoverlay_core STATIC
     src/core/frame_stats.cpp
@@ -67,6 +69,21 @@ target_link_libraries(perfoverlay_capture PUBLIC
     advapi32
 )
 
+# UI static library (D3D11 + ImGui transparent overlay)
+add_library(perfoverlay_ui STATIC
+    src/ui/overlay_window.cpp
+)
+target_include_directories(perfoverlay_ui PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(perfoverlay_ui PUBLIC
+    perfoverlay_core
+    imgui::imgui
+    d3d11
+    dxgi
+    dwmapi
+)
+
 # Main executable
 add_executable(perfoverlay
     src/main.cpp
@@ -75,6 +92,7 @@ target_link_libraries(perfoverlay PRIVATE
     perfoverlay_core
     perfoverlay_sensors
     perfoverlay_capture
+    perfoverlay_ui
 )
 
 # Tests
@@ -91,6 +109,7 @@ target_link_libraries(perfoverlay_tests PRIVATE
     perfoverlay_core
     perfoverlay_sensors
     perfoverlay_capture
+    perfoverlay_ui
     Catch2::Catch2WithMain
 )
 target_include_directories(perfoverlay_tests PRIVATE

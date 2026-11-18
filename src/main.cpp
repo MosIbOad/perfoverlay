@@ -2,120 +2,143 @@
 #include "capture/foreground_tracker.hpp"
 #include "core/metrics_hub.hpp"
 #include "sensors/sensor_manager.hpp"
+#include "ui/overlay_window.hpp"
 
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <thread>
 
 int main(int argc, char* argv[]) {
-    std::cout << "========================================================\n";
-    std::cout << " perfoverlay v0.1 - Unified MetricsHub Telemetry\n";
-    std::cout << "========================================================\n";
+    bool debugMode = false;
+    bool headlessMode = false;
+    int maxFrames = -1; // -1 runs indefinitely
 
-    int maxIterations = -1; // -1 runs indefinitely until Ctrl+C
     for (int i = 1; i < argc; ++i) {
-        if (std::string(argv[i]) == "-n" && i + 1 < argc) {
-            maxIterations = std::stoi(argv[++i]);
-        } else if (std::string(argv[i]) == "--once") {
-            maxIterations = 1;
+        const std::string arg = argv[i];
+        if (arg == "--debug" || arg == "-d") {
+            debugMode = true;
+        } else if (arg == "--headless") {
+            headlessMode = true;
+        } else if (arg == "-n" && i + 1 < argc) {
+            maxFrames = std::stoi(argv[++i]);
         }
     }
 
-    // 1. Initialize sensor subsystem
+    if (debugMode) {
+        std::cout << "========================================================\n";
+        std::cout << " perfoverlay v0.1 - External Overlay (Debug Console)\n";
+        std::cout << "========================================================\n";
+    }
+
+    // 1. Initialize hardware sensor subsystem
     perfoverlay::sensors::SensorManager sensorManager;
     sensorManager.init();
     sensorManager.start();
 
-    // 2. Initialize ETW present capture (No hooking/injection)
+    // 2. Initialize real-time ETW present capture (No hooking/injection)
     perfoverlay::capture::EtwPresentCapture etwCapture;
     const auto etwRes = etwCapture.start();
-    if (!etwRes.ok()) {
+    if (!etwRes.ok() && debugMode) {
         std::cerr << "[ETW Notice] Real-time frame capture not active: " << etwRes.errorMessage << "\n";
     }
 
     // 3. Foreground process tracker
     perfoverlay::capture::ForegroundProcessTracker fgTracker;
 
-    // 4. Unified MetricsHub coordination
+    // 4. Central MetricsHub coordination
     perfoverlay::core::MetricsHub hub(&fgTracker, &etwCapture, &sensorManager);
+
+    // 5. Initialize Win32 + D3D11 + ImGui Overlay Window
+    perfoverlay::ui::OverlayWindow overlay;
+    if (!headlessMode) {
+        if (!overlay.init()) {
+            std::cerr << "[Error] Failed to initialize DirectX 11 transparent overlay window.\n";
+            return 1;
+        }
+
+        // Render initial frame with dummy data to verify rendering pipeline
+        perfoverlay::core::MetricsSnapshot initialDummy;
+        initialDummy.hasActiveGame = true;
+        initialDummy.activeGame = perfoverlay::core::ActiveGameInfo{
+            .processId = 0,
+            .processName = "Waiting for game...",
+            .windowTitle = "perfoverlay"
+        };
+        initialDummy.frameStats = perfoverlay::core::FrameStats{
+            .avgFps = 0.0,
+            .currentFps = 0.0,
+            .minFps = 0.0,
+            .maxFps = 0.0,
+            .p1LowFps = 0.0,
+            .p01LowFps = 0.0,
+            .avgFrameTimeMs = 0.0,
+            .p99FrameTimeMs = 0.0
+        };
+        overlay.render(initialDummy);
+    }
+
+    // Connect and start MetricsHub background worker
     hub.start();
 
-    std::cout << "MetricsHub running (FPS: 4x/s, Sensors: 500 ms). Outputting every 1 s...\n";
-    if (maxIterations < 0) {
-        std::cout << "Press Ctrl+C to stop.\n\n";
+    if (debugMode) {
+        std::cout << "[Overlay] Running. Press F10 to toggle visibility. Press Ctrl+C to exit.\n";
     }
 
-    int count = 0;
-    while (maxIterations < 0 || count < maxIterations) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        ++count;
+    // Main application render and message loop
+    int frameCount = 0;
+    auto lastDebugLogTime = std::chrono::steady_clock::now();
 
-        const auto snap = hub.getSnapshot();
-
-        std::cout << "--------------------------------------------------------\n";
-        std::cout << "[#" << std::setw(2) << count << "] ";
-
-        if (snap.hasActiveGame && snap.activeGame.has_value()) {
-            std::cout << "Game: " << snap.activeGame->processName
-                      << " (PID: " << snap.activeGame->processId << ") - \""
-                      << snap.activeGame->windowTitle << "\"\n";
-
-            if (snap.frameStats.has_value() && snap.frameStats->avgFps > 0.0) {
-                const auto& f = *snap.frameStats;
-                std::cout << "     FPS: " << std::fixed << std::setprecision(1) << f.currentFps
-                          << " | Avg: " << f.avgFps
-                          << " | 1% Low: " << f.p1LowFps
-                          << " | 0.1% Low: " << f.p01LowFps << "\n";
-                std::cout << "     FrameTime: " << std::fixed << std::setprecision(2) << f.avgFrameTimeMs
-                          << " ms | p99: " << f.p99FrameTimeMs << " ms\n";
-            } else {
-                std::cout << "     FPS: (waiting for graphics present events...)\n";
+    while (maxFrames < 0 || frameCount < maxFrames) {
+        if (!headlessMode) {
+            if (!overlay.pollMessages()) {
+                break; // WM_QUIT received
             }
+
+            const auto snapshot = hub.getSnapshot();
+            overlay.render(snapshot);
         } else {
-            std::cout << "Game: [No active game window focused]\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
 
-        // Hardware sensor telemetry
-        std::cout << "     HW:  ";
-        if (snap.sensors.cpuUsagePercent.has_value()) {
-            std::cout << "CPU: " << std::fixed << std::setprecision(1) << *snap.sensors.cpuUsagePercent << "% | ";
-        } else {
-            std::cout << "CPU: N/A | ";
-        }
+        ++frameCount;
 
-        if (snap.sensors.gpuUsagePercent.has_value()) {
-            std::cout << "GPU: " << std::fixed << std::setprecision(1) << *snap.sensors.gpuUsagePercent << "% ";
-        } else {
-            std::cout << "GPU: N/A ";
-        }
+        if (debugMode) {
+            const auto now = std::chrono::steady_clock::now();
+            if (now - lastDebugLogTime >= std::chrono::seconds(1)) {
+                lastDebugLogTime = now;
+                const auto snap = hub.getSnapshot();
 
-        if (snap.sensors.gpuTempC.has_value()) {
-            std::cout << "(" << std::fixed << std::setprecision(1) << *snap.sensors.gpuTempC << " C) | ";
-        } else {
-            std::cout << "| ";
-        }
+                std::cout << "[Debug Frame #" << frameCount << "] ";
+                if (snap.hasActiveGame && snap.activeGame.has_value()) {
+                    std::cout << "Game: " << snap.activeGame->processName << " | ";
+                    if (snap.frameStats.has_value() && snap.frameStats->avgFps > 0.0) {
+                        std::cout << "FPS: " << std::fixed << std::setprecision(1) << snap.frameStats->currentFps
+                                  << " (1% Low: " << snap.frameStats->p1LowFps << ") | ";
+                    } else {
+                        std::cout << "FPS: N/A | ";
+                    }
+                } else {
+                    std::cout << "Game: [None/Desktop] | ";
+                }
 
-        if (snap.sensors.gpuVramUsedMB.has_value() && snap.sensors.gpuVramTotalMB.has_value()) {
-            std::cout << "VRAM: " << std::fixed << std::setprecision(0) << *snap.sensors.gpuVramUsedMB << "/"
-                      << *snap.sensors.gpuVramTotalMB << " MB | ";
-        } else if (snap.sensors.gpuVramUsedMB.has_value()) {
-            std::cout << "VRAM: " << std::fixed << std::setprecision(0) << *snap.sensors.gpuVramUsedMB << " MB | ";
+                if (snap.sensors.cpuUsagePercent.has_value()) {
+                    std::cout << "CPU: " << std::fixed << std::setprecision(1) << *snap.sensors.cpuUsagePercent << "% | ";
+                }
+                if (snap.sensors.gpuUsagePercent.has_value()) {
+                    std::cout << "GPU: " << std::fixed << std::setprecision(1) << *snap.sensors.gpuUsagePercent << "%";
+                }
+                std::cout << "\n";
+            }
         }
-
-        if (snap.sensors.gpuClockMHz.has_value()) {
-            std::cout << "Clock: " << std::fixed << std::setprecision(0) << *snap.sensors.gpuClockMHz << " MHz | ";
-        }
-
-        if (snap.sensors.gpuPowerW.has_value()) {
-            std::cout << "Power: " << std::fixed << std::setprecision(1) << *snap.sensors.gpuPowerW << " W";
-        }
-        std::cout << "\n";
     }
 
+    if (!headlessMode) {
+        overlay.shutdown();
+    }
     hub.stop();
     etwCapture.stop();
     sensorManager.stop();
+
     return 0;
 }

@@ -2,6 +2,13 @@
 
 Lightweight, no-injection FPS and hardware overlay for Windows. Shows FPS, 1% / 0.1% lows, GPU/CPU usage and temps, and upscaler info (DLSS/FSR/XeSS) in a single exe. Built with C++20 and CMake.
 
+## Display Modes & Anti-Cheat Compatibility
+
+- **Windowed & Borderless Windowed (Pencereli / Çerçevesiz Pencereli)**: Tam olarak desteklenir. Overlay, şeffaf, tıklama geçiren (click-through) harici bir Direct3D 11 penceresi olarak oyunun üzerinde görüntülenir.
+- **Exclusive Fullscreen (Özel Tam Ekran)**: **Desteklenmez**. Windows DWM (Masaüstü Pencere Yöneticisi) mimarisi gereği, oyun sürecine DLL enjeksiyonu veya Direct3D hook yapılmadan özel tam ekran uygulamaların üzerine harici pencere çizilemez. `perfoverlay` kullanırken oyun içi görüntü modunuzu **Borderless Windowed (Çerçevesiz Pencereli)** veya **Windowed (Pencereli)** olarak ayarlayınız.
+- **Anti-Cheat Güvenliği**: Oyun sürecine ASLA DLL enjekte edilmez, API hook atılmaz ve oyunun Direct3D aygıtına dokunulmaz. FPS verisi harici ETW (PresentMon yaklaşımı) ile, donanım telemetrisi ise resmi API'lerle (AMD ADLX / Windows PDH) toplanır. Ban riski taşımaz.
+- **Kısayol Tuşu**: **F10** tuşuna basarak overlay penceresini dilediğiniz zaman anında gizleyebilir veya tekrar gösterebilirsiniz.
+
 ## Metrics & 1% / 0.1% Low Methodology
 
 `perfoverlay` implements the **Average of the Worst 1% / 0.1%** (Expected Shortfall / 1% Average Low) method for reporting 1% Low and 0.1% Low FPS.
