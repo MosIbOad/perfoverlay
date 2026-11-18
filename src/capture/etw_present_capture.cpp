@@ -21,11 +21,14 @@ namespace {
 constexpr wchar_t SESSION_NAME[] = L"perfoverlay_etw_present_session";
 
 void stopSessionByName(const wchar_t* sessionName) {
-    const ULONG bufSize = sizeof(EVENT_TRACE_PROPERTIES) + 512 * sizeof(wchar_t);
+    const size_t nameBytes = (wcslen(sessionName) + 1) * sizeof(wchar_t);
+    const ULONG bufSize = static_cast<ULONG>(sizeof(EVENT_TRACE_PROPERTIES) + nameBytes);
     std::vector<BYTE> buf(bufSize, 0);
     auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(buf.data());
     props->Wnode.BufferSize = bufSize;
+    props->Wnode.Flags = WNODE_FLAG_TRACED_GUID;
     props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+    memcpy(buf.data() + sizeof(EVENT_TRACE_PROPERTIES), sessionName, nameBytes);
 
     ControlTraceW(0, sessionName, props, EVENT_TRACE_CONTROL_STOP);
 }
@@ -61,7 +64,8 @@ public:
         // Clean up any stale session with our name left behind by previous crashes
         stopSessionByName(SESSION_NAME);
 
-        const ULONG bufSize = sizeof(EVENT_TRACE_PROPERTIES) + 512 * sizeof(wchar_t);
+        const size_t nameBytes = (wcslen(SESSION_NAME) + 1) * sizeof(wchar_t);
+        const ULONG bufSize = static_cast<ULONG>(sizeof(EVENT_TRACE_PROPERTIES) + nameBytes);
         std::vector<BYTE> propBuffer(bufSize, 0);
         auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(propBuffer.data());
         props->Wnode.BufferSize = bufSize;
@@ -69,9 +73,11 @@ public:
         props->Wnode.ClientContext = 1;  // 1 = QueryPerformanceCounter resolution
         props->LogFileMode = EVENT_TRACE_REAL_TIME_MODE;
         props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-        props->BufferSize = 8;   // 8 KB buffers (flush to user space quickly when full)
+        memcpy(propBuffer.data() + sizeof(EVENT_TRACE_PROPERTIES), SESSION_NAME, nameBytes);
+
+        props->BufferSize = 64;  // 64 KB buffers (standard real-time buffer size)
         props->MinimumBuffers = 8;
-        props->MaximumBuffers = 64;
+        props->MaximumBuffers = 32;
         props->FlushTimer = 1;
 
         TRACEHANDLE sessionHandle = 0;
@@ -153,15 +159,15 @@ public:
 
         const auto now = std::chrono::steady_clock::now();
 
-        // If no present event has arrived in the last 2000 ms, the process is inactive, paused or minimized
+        // If no present event has arrived in the last 2500 ms, the process is inactive, paused or minimized
         auto seenIt = lastSeenTime_.find(processId);
         if (seenIt != lastSeenTime_.end()) {
-            if ((now - seenIt->second) > std::chrono::milliseconds(2000)) {
+            if ((now - seenIt->second) > std::chrono::milliseconds(2500)) {
                 return std::nullopt;
             }
         }
 
-        // Discard entries older than bufferDuration_ (1.5s) from now so stats represent responsive recent frames
+        // Discard entries older than bufferDuration_ (2.0s) from now so stats represent responsive recent frames
         it->second.discardOlderThan(bufferDuration_, now);
         if (it->second.empty()) {
             return std::nullopt;
@@ -195,6 +201,7 @@ public:
         for (auto it = lastSeenTime_.begin(); it != lastSeenTime_.end();) {
             if ((now - it->second) > maxIdleTime) {
                 processBuffers_.erase(it->first);
+                isDxgiProcess_.erase(it->first);
                 it = lastSeenTime_.erase(it);
             } else {
                 ++it;
@@ -227,6 +234,22 @@ private:
 
         if (!isPresentStartEvent(providerId, eventId)) {
             return;
+        }
+
+        const bool isDxgi = InlineIsEqualGUID(providerId, DXGI_PROVIDER_GUID);
+        const bool isDxgk = InlineIsEqualGUID(providerId, DXGKRNL_PROVIDER_GUID);
+
+        {
+            std::lock_guard lock(buffersMutex_);
+            if (isDxgi) {
+                isDxgiProcess_[pid] = true;
+            } else if (isDxgk) {
+                auto it = isDxgiProcess_.find(pid);
+                if (it != isDxgiProcess_.end() && it->second) {
+                    // This process uses DXGI; ignore kernel duplicate event 184 to avoid double counting
+                    return;
+                }
+            }
         }
 
         totalPresentEvents_.fetch_add(1, std::memory_order_relaxed);
@@ -274,7 +297,7 @@ private:
     }
 
     size_t bufferCapacity_{1000};
-    std::chrono::nanoseconds bufferDuration_{std::chrono::milliseconds(1500)};
+    std::chrono::nanoseconds bufferDuration_{std::chrono::milliseconds(2000)};
 
     std::atomic<bool> running_{false};
     TRACEHANDLE sessionHandle_{0};
@@ -287,6 +310,7 @@ private:
     mutable std::mutex buffersMutex_;
     mutable std::unordered_map<uint32_t, core::FrameTimeBuffer> processBuffers_;
     mutable std::unordered_map<uint32_t, std::chrono::steady_clock::time_point> lastSeenTime_;
+    mutable std::unordered_map<uint32_t, bool> isDxgiProcess_;
     std::atomic<uint64_t> totalPresentEvents_{0};
 };
 

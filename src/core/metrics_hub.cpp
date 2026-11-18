@@ -84,9 +84,9 @@ void MetricsHub::pollOnce(bool pollSensors) {
                     missedStatsTicks_ = 0;
                 } else {
                     ++missedStatsTicks_;
-                    // Allow up to 1.5s grace period during ETW buffer flushes before clearing
+                    // Allow up to 2.0s grace period during ETW buffer flushes before clearing
                     const uint32_t pollMs = fpsPollIntervalMs_.load();
-                    const size_t maxMissed = (1500 / (pollMs > 0 ? pollMs : 100));
+                    const size_t maxMissed = (2000 / (pollMs > 0 ? pollMs : 250));
                     if (missedStatsTicks_ >= maxMissed) {
                         next.frameStats = std::nullopt;
                     }

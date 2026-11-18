@@ -90,7 +90,7 @@ public:
                const IPresentCaptureProvider* captureProvider = nullptr,
                const ISensorSnapshotProvider* sensorProvider = nullptr,
                IUpscalerProvider* upscalerProvider = nullptr,
-               uint32_t fpsPollIntervalMs = 100,
+               uint32_t fpsPollIntervalMs = 250,
                uint32_t sensorPollIntervalMs = 500);
     ~MetricsHub();
 
@@ -145,7 +145,7 @@ private:
     MetricsSnapshot snapshot_;
     size_t missedStatsTicks_{0};
 
-    std::atomic<uint32_t> fpsPollIntervalMs_{100};
+    std::atomic<uint32_t> fpsPollIntervalMs_{250};
     std::atomic<uint32_t> sensorPollIntervalMs_{500};
 
     std::atomic<bool> running_{false};

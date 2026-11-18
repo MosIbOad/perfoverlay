@@ -58,8 +58,13 @@ bool ForegroundProcessTracker::isExcluded(uint32_t processId, uint32_t ownProces
         return true;
     }
 
-    if (windowTitle.empty() || windowTitle == "Program Manager" || windowTitle == "Taskbar" ||
+    if (windowTitle == "Program Manager" || windowTitle == "Taskbar" ||
         windowTitle == "Windows Shell Experience Host") {
+        return true;
+    }
+
+    // Exclude windows where both process name and window title are empty (invalid/ghost windows)
+    if (processName.empty() && windowTitle.empty()) {
         return true;
     }
 

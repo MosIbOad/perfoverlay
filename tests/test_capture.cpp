@@ -116,14 +116,15 @@ TEST_CASE("ForegroundProcessTracker - Pure exclusion logic", "[capture][foregrou
     REQUIRE(ForegroundProcessTracker::isExcluded(4446, ownPid, "powershell.exe", "Windows PowerShell"));
     REQUIRE(ForegroundProcessTracker::isExcluded(4447, ownPid, "Taskmgr.exe", "Task Manager"));
 
-    // Empty or special shell titles
-    REQUIRE(ForegroundProcessTracker::isExcluded(5555, ownPid, "app.exe", ""));
+    // Empty process name or special shell titles
+    REQUIRE(ForegroundProcessTracker::isExcluded(5555, ownPid, "", ""));
     REQUIRE(ForegroundProcessTracker::isExcluded(5556, ownPid, "app.exe", "Program Manager"));
     REQUIRE(ForegroundProcessTracker::isExcluded(5557, ownPid, "app.exe", "Taskbar"));
 
-    // Normal game: must NOT be excluded
+    // Normal game: must NOT be excluded, even if borderless with empty window title (e.g. GTA5_Enhanced)
     REQUIRE_FALSE(ForegroundProcessTracker::isExcluded(7777, ownPid, "Cyberpunk2077.exe", "Cyberpunk 2077"));
     REQUIRE_FALSE(ForegroundProcessTracker::isExcluded(8888, ownPid, "cs2.exe", "Counter-Strike 2"));
+    REQUIRE_FALSE(ForegroundProcessTracker::isExcluded(25296, ownPid, "GTA5_Enhanced.exe", ""));
 }
 
 TEST_CASE("ETW Types - Present event classification", "[capture][etw_types]") {

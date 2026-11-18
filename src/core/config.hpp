@@ -46,7 +46,7 @@ struct AppConfig {
     float backgroundAlpha{0.78f};
     float fontScale{1.0f};
 
-    uint32_t fpsPollIntervalMs{100};
+    uint32_t fpsPollIntervalMs{250};
     uint32_t sensorPollIntervalMs{500};
 
     std::string toggleHotkey{"F10"};
