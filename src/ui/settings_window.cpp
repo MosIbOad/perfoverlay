@@ -260,6 +260,11 @@ bool SettingsWindow::render() {
         if (ImGui::CollapsingHeader("Gorunum ve Donanim (Aesthetics & Hardware)", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::SliderFloat("Arka Plan Saydamligi", &workingConfig_.backgroundAlpha, 0.1f, 1.0f, "%.2f");
 
+            int fpsPoll = static_cast<int>(workingConfig_.fpsPollIntervalMs);
+            if (ImGui::SliderInt("FPS Yenileme Araligi (ms)", &fpsPoll, 20, 500, "%d ms")) {
+                workingConfig_.fpsPollIntervalMs = static_cast<uint32_t>(fpsPoll);
+            }
+
             const char* providers[] = {"Otomatik (Auto)", "LibreHardwareMonitor (HTTP)", "Devre Disi (Disabled)"};
             int providerIndex = 0;
             if (workingConfig_.cpuTempProvider == "librehardwaremonitor") {

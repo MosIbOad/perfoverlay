@@ -37,8 +37,8 @@ struct EtwStartResult {
  */
 class EtwPresentCapture : public core::IPresentCaptureProvider {
 public:
-    explicit EtwPresentCapture(size_t bufferCapacity = 2000,
-                               std::chrono::nanoseconds bufferDuration = std::chrono::seconds(3));
+    explicit EtwPresentCapture(size_t bufferCapacity = 1000,
+                               std::chrono::nanoseconds bufferDuration = std::chrono::milliseconds(1500));
     ~EtwPresentCapture();
 
     EtwPresentCapture(const EtwPresentCapture&) = delete;

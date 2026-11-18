@@ -69,9 +69,9 @@ public:
         props->Wnode.ClientContext = 1;  // 1 = QueryPerformanceCounter resolution
         props->LogFileMode = EVENT_TRACE_REAL_TIME_MODE;
         props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-        props->BufferSize = 64;  // 64 KB buffers
-        props->MinimumBuffers = 4;
-        props->MaximumBuffers = 32;
+        props->BufferSize = 8;   // 8 KB buffers (flush to user space quickly when full)
+        props->MinimumBuffers = 8;
+        props->MaximumBuffers = 64;
         props->FlushTimer = 1;
 
         TRACEHANDLE sessionHandle = 0;
@@ -153,16 +153,16 @@ public:
 
         const auto now = std::chrono::steady_clock::now();
 
-        // If no present event has arrived in the last 2500 ms, the process is inactive, paused or minimized
+        // If no present event has arrived in the last 2000 ms, the process is inactive, paused or minimized
         auto seenIt = lastSeenTime_.find(processId);
         if (seenIt != lastSeenTime_.end()) {
-            if ((now - seenIt->second) > std::chrono::milliseconds(2500)) {
+            if ((now - seenIt->second) > std::chrono::milliseconds(2000)) {
                 return std::nullopt;
             }
         }
 
-        // Discard entries older than 3 seconds from now so stats represent only recent frames
-        it->second.discardOlderThan(std::chrono::seconds(3), now);
+        // Discard entries older than bufferDuration_ (1.5s) from now so stats represent responsive recent frames
+        it->second.discardOlderThan(bufferDuration_, now);
         if (it->second.empty()) {
             return std::nullopt;
         }
@@ -273,8 +273,8 @@ private:
         }
     }
 
-    size_t bufferCapacity_{2000};
-    std::chrono::nanoseconds bufferDuration_{std::chrono::seconds(3)};
+    size_t bufferCapacity_{1000};
+    std::chrono::nanoseconds bufferDuration_{std::chrono::milliseconds(1500)};
 
     std::atomic<bool> running_{false};
     TRACEHANDLE sessionHandle_{0};

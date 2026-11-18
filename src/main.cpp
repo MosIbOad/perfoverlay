@@ -89,7 +89,8 @@ int main(int argc, char* argv[]) {
     perfoverlay::upscaler::UpscalerDetector upscalerDetector;
 
     // 5. Central MetricsHub coordination
-    perfoverlay::core::MetricsHub hub(&fgTracker, &etwCapture, &sensorManager, &upscalerDetector);
+    perfoverlay::core::MetricsHub hub(&fgTracker, &etwCapture, &sensorManager, &upscalerDetector,
+                                      appConfig.fpsPollIntervalMs, appConfig.sensorPollIntervalMs);
 
     // 6. Initialize Win32 + D3D11 + ImGui Overlay Window
     perfoverlay::ui::OverlayWindow overlay(appConfig);
@@ -104,9 +105,10 @@ int main(int argc, char* argv[]) {
 
         // Initialize Settings dialog window
         settingsWindow.init(overlay.getHwnd());
-        settingsWindow.onConfigApplied = [&overlay, &appConfig](const perfoverlay::core::AppConfig& cfg) {
+        settingsWindow.onConfigApplied = [&overlay, &hub, &appConfig](const perfoverlay::core::AppConfig& cfg) {
             appConfig = cfg;
             overlay.setConfig(cfg);
+            hub.setPollIntervals(cfg.fpsPollIntervalMs, cfg.sensorPollIntervalMs);
         };
 
         if (openSettingsOnStart) {

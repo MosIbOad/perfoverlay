@@ -79,8 +79,8 @@ public:
  * @brief Central aggregator coordinating capture, sensors, and frame timing metrics.
  *
  * Runs a background thread updating:
- * - FPS and active game stats 4 times per second (every 250 ms).
- * - Hardware sensors every 500 ms.
+ * - FPS and active game stats at high responsiveness (default every 100 ms, 10 Hz).
+ * - Hardware sensors periodically (default every 500 ms).
  *
  * Provides thread-safe, non-blocking snapshot reads for the UI thread.
  */
@@ -88,7 +88,10 @@ class MetricsHub {
 public:
     MetricsHub(const IForegroundProcessProvider* fgProvider = nullptr,
                const IPresentCaptureProvider* captureProvider = nullptr,
-               const ISensorSnapshotProvider* sensorProvider = nullptr, IUpscalerProvider* upscalerProvider = nullptr);
+               const ISensorSnapshotProvider* sensorProvider = nullptr,
+               IUpscalerProvider* upscalerProvider = nullptr,
+               uint32_t fpsPollIntervalMs = 100,
+               uint32_t sensorPollIntervalMs = 500);
     ~MetricsHub();
 
     MetricsHub(const MetricsHub&) = delete;
@@ -100,6 +103,14 @@ public:
     void setCaptureProvider(const IPresentCaptureProvider* provider) noexcept { captureProvider_ = provider; }
     void setSensorProvider(const ISensorSnapshotProvider* provider) noexcept { sensorProvider_ = provider; }
     void setUpscalerProvider(IUpscalerProvider* provider) noexcept { upscalerProvider_ = provider; }
+
+    void setPollIntervals(uint32_t fpsMs, uint32_t sensorMs = 500) noexcept {
+        fpsPollIntervalMs_.store(fpsMs < 10 ? 10 : fpsMs);
+        sensorPollIntervalMs_.store(sensorMs < 50 ? 50 : sensorMs);
+    }
+
+    [[nodiscard]] uint32_t fpsPollIntervalMs() const noexcept { return fpsPollIntervalMs_.load(); }
+    [[nodiscard]] uint32_t sensorPollIntervalMs() const noexcept { return sensorPollIntervalMs_.load(); }
 
     /**
      * @brief Starts the background aggregation loop.
@@ -133,6 +144,9 @@ private:
     mutable std::mutex snapshotMutex_;
     MetricsSnapshot snapshot_;
     size_t missedStatsTicks_{0};
+
+    std::atomic<uint32_t> fpsPollIntervalMs_{100};
+    std::atomic<uint32_t> sensorPollIntervalMs_{500};
 
     std::atomic<bool> running_{false};
     std::mutex cvMutex_;

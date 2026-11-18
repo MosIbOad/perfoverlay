@@ -3,9 +3,11 @@
 namespace perfoverlay::core {
 
 MetricsHub::MetricsHub(const IForegroundProcessProvider* fgProvider, const IPresentCaptureProvider* captureProvider,
-                       const ISensorSnapshotProvider* sensorProvider, IUpscalerProvider* upscalerProvider)
+                       const ISensorSnapshotProvider* sensorProvider, IUpscalerProvider* upscalerProvider,
+                       uint32_t fpsPollIntervalMs, uint32_t sensorPollIntervalMs)
     : fgProvider_(fgProvider), captureProvider_(captureProvider), sensorProvider_(sensorProvider),
-      upscalerProvider_(upscalerProvider) {}
+      upscalerProvider_(upscalerProvider), fpsPollIntervalMs_(fpsPollIntervalMs < 10 ? 10 : fpsPollIntervalMs),
+      sensorPollIntervalMs_(sensorPollIntervalMs < 50 ? 50 : sensorPollIntervalMs) {}
 
 MetricsHub::~MetricsHub() {
     stop();
@@ -20,19 +22,23 @@ void MetricsHub::start() {
     pollOnce(true);
 
     worker_ = std::jthread([this](std::stop_token stopToken) {
-        size_t tickCount = 0;
+        auto lastSensorPoll = std::chrono::steady_clock::now();
         while (!stopToken.stop_requested()) {
             std::unique_lock lock(cvMutex_);
+            const auto interval = std::chrono::milliseconds(fpsPollIntervalMs_.load());
             const bool stopped =
-                cv_.wait_for(lock, std::chrono::milliseconds(250), [&stopToken] { return stopToken.stop_requested(); });
+                cv_.wait_for(lock, interval, [&stopToken] { return stopToken.stop_requested(); });
 
             if (stopped || stopToken.stop_requested()) {
                 break;
             }
 
-            ++tickCount;
-            // FPS updates every tick (250 ms, 4 times/sec). Sensors update every 2nd tick (500 ms).
-            const bool pollSensors = (tickCount % 2 == 0);
+            const auto now = std::chrono::steady_clock::now();
+            bool pollSensors = false;
+            if (now - lastSensorPoll >= std::chrono::milliseconds(sensorPollIntervalMs_.load())) {
+                pollSensors = true;
+                lastSensorPoll = now;
+            }
             pollOnce(pollSensors);
         }
     });
@@ -78,8 +84,10 @@ void MetricsHub::pollOnce(bool pollSensors) {
                     missedStatsTicks_ = 0;
                 } else {
                     ++missedStatsTicks_;
-                    // Allow up to 6 ticks (1.5s) grace period during ETW buffer flushes before clearing
-                    if (missedStatsTicks_ >= 6) {
+                    // Allow up to 1.5s grace period during ETW buffer flushes before clearing
+                    const uint32_t pollMs = fpsPollIntervalMs_.load();
+                    const size_t maxMissed = (1500 / (pollMs > 0 ? pollMs : 100));
+                    if (missedStatsTicks_ >= maxMissed) {
                         next.frameStats = std::nullopt;
                     }
                 }
