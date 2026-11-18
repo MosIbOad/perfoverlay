@@ -10,10 +10,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(MSVC)
-    add_compile_options(/W4 /permissive-)
+    add_compile_options(/W4 /permissive- /utf-8)
 endif()
 
 find_package(imgui CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # Core static library (OS-agnostic, unit-testable)
 add_library(perfoverlay_core STATIC
@@ -27,6 +28,8 @@ target_include_directories(perfoverlay_core PUBLIC
 # Sensors static library (Hardware telemetry)
 add_library(perfoverlay_sensors STATIC
     src/sensors/cpu_sensor.cpp
+    src/sensors/cpu_temp_provider.cpp
+    src/sensors/cpu_temp_sensor.cpp
     src/sensors/amd_gpu_sensor.cpp
     src/sensors/gpu_sensor_fallback.cpp
     src/sensors/sensor_manager.cpp
@@ -52,7 +55,9 @@ target_include_directories(perfoverlay_sensors SYSTEM PRIVATE
 )
 target_link_libraries(perfoverlay_sensors PUBLIC
     perfoverlay_core
+    nlohmann_json::nlohmann_json
     pdh
+    winhttp
 )
 
 # Capture static library (ETW PresentMon frame capture)

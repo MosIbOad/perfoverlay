@@ -21,6 +21,24 @@ Lightweight, no-injection FPS and hardware overlay for Windows. Shows FPS, 1% / 
 ### Bilinen Sınırlamalar
 - **Anlık Aktiflik Durumu**: Overlay arayüzünde "Detected in game files" dürüst etiketi kullanılır. Oyun sürecine hook atılmadığı ve belleği okunmadığı için, ilgili teknolojinin (özellikle Frame Generation veya DLSS/FSR) oyun içi grafik ayarları menüsünden o an **aktif edilip edilmediği bu sürümde tespit edilmemektedir**. Yalnızca oyunun ilgili upscaler kütüphanelerini barındırdığı doğrulanır.
 
+## CPU Sıcaklığı & Güvenlik Mimarisi (CPU Temperature Architecture)
+
+Windows ortamında CPU çekirdek ve paket sıcaklıklarına kullanıcı modundan (Ring 3) doğrudan resmi bir Win32 API ile erişilemez; MSR (Model-Specific Register) veya SMBus/EC kayıtlarını okumak için bir **çekirdek modu sürücüsü (Kernel Driver)** (örn. WinRing0, InpOutx64, ATSIR vb.) gerekir.
+
+### Neden perfoverlay Kendi Kernel Sürücüsünü Yüklemez?
+1. **Anti-Cheat Güvenliği**: Popüler ring-0 anti-cheat sistemleri (Riot Vanguard, Easy Anti-Cheat, BattlEye, Ricochet vb.), bilinen güvenlik açıkları barındıran üçüncü taraf donanım sürücülerini tespit ettiği anda oyunu sonlandırır veya hesabı yasaklar (ban).
+2. **Sistem Güvenliği & Çekirdek Bütünlüğü**: Eski/güvensiz kernel sürücüleri modern Windows 11 HVCI (Bellek Bütünlüğü / Memory Integrity) tarafından engellenir ve mavi ekran (BSOD) riskleri taşır.
+3. `perfoverlay`, anti-cheat uyumluluğunu ve sistem kararlılığını birinci öncelik olarak kabul eder; bu yüzden kendisi **asla kernel sürücüsü yüklemez**.
+
+### Harici LibreHardwareMonitor Entegrasyonu
+Kullanıcılar CPU sıcaklığını takip etmek istediklerinde, açık kaynaklı [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) yazılımının yerel Remote Web Server özelliğini kullanabilir:
+
+#### Kurulum Adımları:
+1. [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases) uygulamasını indirin ve yönetici olarak çalıştırın.
+2. Üst menüden **Options -> Remote Web Server -> Run** seçeneğini işaretleyin (varsayılan port: `8085`).
+3. `perfoverlay` otomatik olarak `http://localhost:8085/data.json` uç noktasından CPU paket sıcaklığını okur ve overlay'de gösterir.
+4. LibreHardwareMonitor çalıştırılmadığında veya sunucu kapalı olduğunda, overlay CPU sıcaklığını sessizce `Temp: N/A` olarak gösterir; hiçbir performans kaybı veya takılma yaşanmaz.
+
 ## Metrics & 1% / 0.1% Low Methodology
 
 `perfoverlay` implements the **Average of the Worst 1% / 0.1%** (Expected Shortfall / 1% Average Low) method for reporting 1% Low and 0.1% Low FPS.

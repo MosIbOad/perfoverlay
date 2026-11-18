@@ -1,5 +1,6 @@
 #include "sensors/sensor_manager.hpp"
 #include "sensors/cpu_sensor.hpp"
+#include "sensors/cpu_temp_sensor.hpp"
 #include "sensors/amd_gpu_sensor.hpp"
 #include "sensors/gpu_sensor_fallback.hpp"
 
@@ -30,7 +31,13 @@ bool SensorManager::init() {
             sensors_.push_back(std::move(cpu));
         }
 
-        // 2. GPU Sensor: AMD ADLX first, fallback to PDH GPU Engine
+        // 2. CPU Temperature Sensor (Optional external provider, no kernel driver)
+        auto cpuTemp = std::make_unique<CpuTempSensor>();
+        if (cpuTemp->init()) {
+            sensors_.push_back(std::move(cpuTemp));
+        }
+
+        // 3. GPU Sensor: AMD ADLX first, fallback to PDH GPU Engine
         auto amdGpu = std::make_unique<AmdGpuSensor>();
         if (amdGpu->init()) {
             sensors_.push_back(std::move(amdGpu));

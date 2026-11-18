@@ -12,6 +12,7 @@ namespace perfoverlay::sensors {
  */
 struct SensorSnapshot {
     std::optional<double> cpuUsagePercent; // CPU utilization percentage (0.0 - 100.0)
+    std::optional<double> cpuTempC;        // CPU package/core temperature in degrees Celsius
     std::optional<double> gpuUsagePercent; // GPU core utilization percentage (0.0 - 100.0)
     std::optional<double> gpuTempC;        // GPU core temperature in degrees Celsius
     std::optional<double> gpuVramUsedMB;   // GPU dedicated video memory used (in MB)

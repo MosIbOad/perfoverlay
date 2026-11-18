@@ -133,7 +133,11 @@ int main(int argc, char* argv[]) {
                 }
 
                 if (snap.sensors.cpuUsagePercent.has_value()) {
-                    std::cout << "CPU: " << std::fixed << std::setprecision(1) << *snap.sensors.cpuUsagePercent << "% | ";
+                    std::cout << "CPU: " << std::fixed << std::setprecision(1) << *snap.sensors.cpuUsagePercent << "%";
+                    if (snap.sensors.cpuTempC.has_value()) {
+                        std::cout << " (" << *snap.sensors.cpuTempC << "C)";
+                    }
+                    std::cout << " | ";
                 }
                 if (snap.sensors.gpuUsagePercent.has_value()) {
                     std::cout << "GPU: " << std::fixed << std::setprecision(1) << *snap.sensors.gpuUsagePercent << "%";

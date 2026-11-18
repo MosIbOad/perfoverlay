@@ -347,11 +347,18 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
         ImGui::Separator();
 
         // Hardware Telemetry
-        // CPU
+        // CPU Usage & Temperature
         if (snapshot.sensors.cpuUsagePercent.has_value()) {
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CPU: %.1f %%", *snapshot.sensors.cpuUsagePercent);
         } else {
             ImGui::TextDisabled("CPU: N/A");
+        }
+
+        ImGui::SameLine(140.0f);
+        if (snapshot.sensors.cpuTempC.has_value()) {
+            ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Temp: %.0f C", *snapshot.sensors.cpuTempC);
+        } else {
+            ImGui::TextDisabled("Temp: N/A");
         }
 
         // GPU Usage & Temperature

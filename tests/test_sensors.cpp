@@ -1,6 +1,8 @@
 #include "sensors/sensor_types.hpp"
 #include "sensors/sensor_manager.hpp"
 #include "sensors/cpu_sensor.hpp"
+#include "sensors/cpu_temp_provider.hpp"
+#include "sensors/cpu_temp_sensor.hpp"
 #include "sensors/amd_gpu_sensor.hpp"
 #include "sensors/gpu_sensor_fallback.hpp"
 
@@ -32,6 +34,7 @@ public:
 
     void updateSnapshot(SensorSnapshot& snapshot) const override {
         if (values.cpuUsagePercent.has_value()) snapshot.cpuUsagePercent = values.cpuUsagePercent;
+        if (values.cpuTempC.has_value()) snapshot.cpuTempC = values.cpuTempC;
         if (values.gpuUsagePercent.has_value()) snapshot.gpuUsagePercent = values.gpuUsagePercent;
         if (values.gpuTempC.has_value()) snapshot.gpuTempC = values.gpuTempC;
         if (values.gpuVramUsedMB.has_value()) snapshot.gpuVramUsedMB = values.gpuVramUsedMB;
@@ -41,11 +44,28 @@ public:
     }
 };
 
+class MockHttpClient : public IHttpClient {
+public:
+    std::optional<std::string> response;
+    int callCount{0};
+
+    std::optional<std::string> get(
+        std::string_view /*host*/,
+        uint16_t /*port*/,
+        std::string_view /*path*/,
+        std::chrono::milliseconds /*timeout*/
+    ) override {
+        ++callCount;
+        return response;
+    }
+};
+
 } // namespace
 
 TEST_CASE("SensorSnapshot - Default values are std::nullopt", "[sensors]") {
     SensorSnapshot snapshot;
     REQUIRE_FALSE(snapshot.cpuUsagePercent.has_value());
+    REQUIRE_FALSE(snapshot.cpuTempC.has_value());
     REQUIRE_FALSE(snapshot.gpuUsagePercent.has_value());
     REQUIRE_FALSE(snapshot.gpuTempC.has_value());
     REQUIRE_FALSE(snapshot.gpuVramUsedMB.has_value());
@@ -174,5 +194,221 @@ TEST_CASE("GpuSensorFallback - Safe initialization without crashing", "[sensors]
     } else {
         REQUIRE_FALSE(fallback.isInitialized());
         SUCCEED("PDH GPU Engine counter returned false safely when counters unavailable");
+    }
+}
+
+TEST_CASE("NullCpuTempProvider - Always returns std::nullopt", "[sensors][cputemp]") {
+    NullCpuTempProvider nullProvider;
+    REQUIRE_FALSE(nullProvider.getCpuTempC().has_value());
+}
+
+TEST_CASE("parseLhmCpuTempJson - Parses various LHM JSON payloads", "[sensors][cputemp]") {
+    SECTION("AMD Ryzen CPU Package and Core (Tdie)") {
+        const std::string amdJson = R"json({
+            "Text": "Sensor",
+            "Children": [
+                {
+                    "Text": "AMD Ryzen 7 7800X3D",
+                    "Children": [
+                        {
+                            "Text": "Temperatures",
+                            "Children": [
+                                { "Text": "CPU Package", "Value": "54.2 C" },
+                                { "Text": "Core (Tdie)", "Value": "53.8 C" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })json";
+
+        const auto temp = parseLhmCpuTempJson(amdJson);
+        REQUIRE(temp.has_value());
+        REQUIRE(*temp == Catch::Approx(54.2));
+    }
+
+    SECTION("AMD Ryzen with Core (Tctl/Tdie) when Package is absent") {
+        const std::string amdCoreJson = R"json({
+            "Text": "Sensor",
+            "Children": [
+                {
+                    "Text": "AMD Ryzen 5 5600X",
+                    "Children": [
+                        {
+                            "Text": "Temperatures",
+                            "Children": [
+                                { "Text": "Core (Tctl/Tdie)", "Value": "61.5 C" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })json";
+
+        const auto temp = parseLhmCpuTempJson(amdCoreJson);
+        REQUIRE(temp.has_value());
+        REQUIRE(*temp == Catch::Approx(61.5));
+    }
+
+    SECTION("Intel Core CPU with comma decimal formatting") {
+        const std::string intelJson = R"json({
+            "Text": "Sensor",
+            "Children": [
+                {
+                    "Text": "Intel Core i7-13700K",
+                    "Children": [
+                        {
+                            "Text": "Temperatures",
+                            "Children": [
+                                { "Text": "CPU Package", "Value": "58,4 C" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })json";
+
+        const auto temp = parseLhmCpuTempJson(intelJson);
+        REQUIRE(temp.has_value());
+        REQUIRE(*temp == Catch::Approx(58.4));
+    }
+
+    SECTION("JSON tree with only GPU sensors returns std::nullopt") {
+        const std::string gpuOnlyJson = R"json({
+            "Text": "Sensor",
+            "Children": [
+                {
+                    "Text": "NVIDIA GeForce RTX 4080",
+                    "Children": [
+                        {
+                            "Text": "Temperatures",
+                            "Children": [
+                                { "Text": "GPU Core", "Value": "65.0 C" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })json";
+
+        const auto temp = parseLhmCpuTempJson(gpuOnlyJson);
+        REQUIRE_FALSE(temp.has_value());
+    }
+
+    SECTION("Malformed or empty JSON safely returns std::nullopt") {
+        REQUIRE_FALSE(parseLhmCpuTempJson("").has_value());
+        REQUIRE_FALSE(parseLhmCpuTempJson("Not a json").has_value());
+        REQUIRE_FALSE(parseLhmCpuTempJson("{ unclosed json").has_value());
+    }
+}
+
+TEST_CASE("LibreHardwareMonitorHttpProvider - Queries mock HTTP client", "[sensors][cputemp]") {
+    auto mockClient = std::make_shared<MockHttpClient>();
+
+    SECTION("Successful response returns parsed temperature") {
+        mockClient->response = R"json({
+            "Text": "Sensor",
+            "Children": [
+                {
+                    "Text": "AMD Ryzen 9 7950X",
+                    "Children": [
+                        {
+                            "Text": "Temperatures",
+                            "Children": [
+                                { "Text": "CPU Package", "Value": "49.0 C" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        })json";
+
+        LibreHardwareMonitorHttpProvider provider(mockClient, "localhost", 8085, "/data.json");
+        const auto temp = provider.getCpuTempC();
+
+        REQUIRE(mockClient->callCount == 1);
+        REQUIRE(temp.has_value());
+        REQUIRE(*temp == Catch::Approx(49.0));
+    }
+
+    SECTION("HTTP connection failure / timeout returns std::nullopt") {
+        mockClient->response = std::nullopt; // Server not running
+
+        LibreHardwareMonitorHttpProvider provider(mockClient, "localhost", 8085, "/data.json");
+        const auto temp = provider.getCpuTempC();
+
+        REQUIRE(mockClient->callCount == 1);
+        REQUIRE_FALSE(temp.has_value());
+    }
+
+    SECTION("Server returning 404/garbage returns std::nullopt without crashing") {
+        mockClient->response = "<html>404 Not Found</html>";
+
+        LibreHardwareMonitorHttpProvider provider(mockClient, "localhost", 8085, "/data.json");
+        const auto temp = provider.getCpuTempC();
+
+        REQUIRE(mockClient->callCount == 1);
+        REQUIRE_FALSE(temp.has_value());
+    }
+}
+
+TEST_CASE("CpuTempSensor - Polling updates SensorSnapshot", "[sensors][cputemp]") {
+    auto mockClient = std::make_shared<MockHttpClient>();
+    mockClient->response = R"json({
+        "Text": "Sensor",
+        "Children": [
+            {
+                "Text": "Intel Core i9-14900K",
+                "Children": [
+                    {
+                        "Text": "Temperatures",
+                        "Children": [
+                            { "Text": "CPU Package", "Value": "72.5 C" }
+                        ]
+                    }
+                ]
+            }
+        ]
+    })json";
+
+    auto provider = std::make_unique<LibreHardwareMonitorHttpProvider>(mockClient);
+    CpuTempSensor sensor(std::move(provider));
+
+    REQUIRE(sensor.init());
+    sensor.poll();
+
+    REQUIRE(sensor.getCurrentTempC().has_value());
+    REQUIRE(*sensor.getCurrentTempC() == Catch::Approx(72.5));
+
+    SensorSnapshot snap;
+    sensor.updateSnapshot(snap);
+    REQUIRE(snap.cpuTempC.has_value());
+    REQUIRE(*snap.cpuTempC == Catch::Approx(72.5));
+}
+
+TEST_CASE("createCpuTempProvider - Factory configuration modes", "[sensors][cputemp]") {
+    SECTION("Disabled mode creates NullCpuTempProvider") {
+        auto provider = createCpuTempProvider(CpuTempProviderType::Disabled);
+        REQUIRE_FALSE(provider->getCpuTempC().has_value());
+    }
+
+    SECTION("Auto mode with mock client creates functional LHM provider") {
+        auto mockClient = std::make_shared<MockHttpClient>();
+        mockClient->response = R"json({
+            "Text": "Sensor",
+            "Children": [
+                {
+                    "Text": "CPU",
+                    "Children": [
+                        { "Text": "CPU Package", "Value": "60.0 C" }
+                    ]
+                }
+            ]
+        })json";
+
+        auto provider = createCpuTempProvider(CpuTempProviderType::Auto, mockClient);
+        const auto temp = provider->getCpuTempC();
+        REQUIRE(temp.has_value());
+        REQUIRE(*temp == Catch::Approx(60.0));
     }
 }
