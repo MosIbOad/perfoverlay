@@ -112,10 +112,15 @@ target_link_libraries(perfoverlay_upscaler PUBLIC
     perfoverlay_core
 )
 
-# Main executable
-add_executable(perfoverlay
+# Main executable (Pure Windows GUI subsystem: no console window on launch)
+add_executable(perfoverlay WIN32
     src/main.cpp
 )
+if(MSVC)
+    set_target_properties(perfoverlay PROPERTIES
+        LINK_FLAGS "/ENTRY:mainCRTStartup"
+    )
+endif()
 target_link_libraries(perfoverlay PRIVATE
     perfoverlay_core
     perfoverlay_sensors
