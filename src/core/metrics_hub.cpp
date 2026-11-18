@@ -63,13 +63,29 @@ void MetricsHub::pollOnce(bool pollSensors) {
     if (fgProvider_) {
         const auto activeFg = fgProvider_->getActiveProcess();
         if (activeFg.has_value()) {
+            const bool sameGame = (next.hasActiveGame && next.activeGame.has_value() &&
+                                   next.activeGame->processId == activeFg->processId);
             next.hasActiveGame = true;
             next.activeGame = *activeFg;
 
             if (captureProvider_) {
-                next.frameStats = captureProvider_->getProcessStats(activeFg->processId);
+                const auto stats = captureProvider_->getProcessStats(activeFg->processId);
+                if (stats.has_value()) {
+                    next.frameStats = stats;
+                    missedStatsTicks_ = 0;
+                } else if (!sameGame) {
+                    next.frameStats = std::nullopt;
+                    missedStatsTicks_ = 0;
+                } else {
+                    ++missedStatsTicks_;
+                    // Allow up to 6 ticks (1.5s) grace period during ETW buffer flushes before clearing
+                    if (missedStatsTicks_ >= 6) {
+                        next.frameStats = std::nullopt;
+                    }
+                }
             } else {
                 next.frameStats = std::nullopt;
+                missedStatsTicks_ = 0;
             }
 
             if (upscalerProvider_) {
@@ -82,12 +98,14 @@ void MetricsHub::pollOnce(bool pollSensors) {
             next.activeGame = std::nullopt;
             next.frameStats = std::nullopt;
             next.upscaler = std::nullopt;
+            missedStatsTicks_ = 0;
         }
     } else {
         next.hasActiveGame = false;
         next.activeGame = std::nullopt;
         next.frameStats = std::nullopt;
         next.upscaler = std::nullopt;
+        missedStatsTicks_ = 0;
     }
 
     // 2. Hardware sensors (500 ms cycle)

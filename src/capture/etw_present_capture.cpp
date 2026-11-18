@@ -153,16 +153,16 @@ public:
 
         const auto now = std::chrono::steady_clock::now();
 
-        // If no present event has arrived in the last 500 ms, the process is inactive, paused or minimized
+        // If no present event has arrived in the last 2500 ms, the process is inactive, paused or minimized
         auto seenIt = lastSeenTime_.find(processId);
         if (seenIt != lastSeenTime_.end()) {
-            if ((now - seenIt->second) > std::chrono::milliseconds(500)) {
+            if ((now - seenIt->second) > std::chrono::milliseconds(2500)) {
                 return std::nullopt;
             }
         }
 
-        // Discard entries older than 1 second from now so stats represent only recent frames
-        it->second.discardOlderThan(std::chrono::seconds(1), now);
+        // Discard entries older than 3 seconds from now so stats represent only recent frames
+        it->second.discardOlderThan(std::chrono::seconds(3), now);
         if (it->second.empty()) {
             return std::nullopt;
         }
@@ -273,8 +273,8 @@ private:
         }
     }
 
-    size_t bufferCapacity_{1000};
-    std::chrono::nanoseconds bufferDuration_{std::chrono::seconds(1)};
+    size_t bufferCapacity_{2000};
+    std::chrono::nanoseconds bufferDuration_{std::chrono::seconds(3)};
 
     std::atomic<bool> running_{false};
     TRACEHANDLE sessionHandle_{0};

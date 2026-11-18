@@ -132,6 +132,7 @@ private:
 
     mutable std::mutex snapshotMutex_;
     MetricsSnapshot snapshot_;
+    size_t missedStatsTicks_{0};
 
     std::atomic<bool> running_{false};
     std::mutex cvMutex_;
