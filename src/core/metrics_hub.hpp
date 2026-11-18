@@ -2,6 +2,7 @@
 
 #include "core/frame_stats.hpp"
 #include "sensors/sensor_types.hpp"
+#include "upscaler/upscaler_types.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -22,6 +23,7 @@ struct ActiveGameInfo {
     uint32_t processId{0};
     std::string processName;
     std::string windowTitle;
+    std::string executablePath;
 };
 
 /**
@@ -36,6 +38,9 @@ struct MetricsSnapshot {
 
     // Hardware telemetry (CPU/GPU load, temps, VRAM, clock, power)
     sensors::SensorSnapshot sensors;
+
+    // Upscaler capabilities detected in game files (DLSS, FSR, XeSS)
+    std::optional<upscaler::UpscalerInfo> upscaler;
 
     // Timestamp when this snapshot was captured/updated
     std::chrono::steady_clock::time_point timestamp{};
@@ -62,6 +67,16 @@ public:
     virtual sensors::SensorSnapshot getSnapshot() const = 0;
 };
 
+// Abstract interface for upscaler detection
+class IUpscalerProvider {
+public:
+    virtual ~IUpscalerProvider() = default;
+    virtual std::optional<upscaler::UpscalerInfo> getUpscalerInfo(
+        uint32_t processId,
+        std::string_view executablePath
+    ) = 0;
+};
+
 /**
  * @brief Central aggregator coordinating capture, sensors, and frame timing metrics.
  *
@@ -76,7 +91,8 @@ public:
     MetricsHub(
         const IForegroundProcessProvider* fgProvider = nullptr,
         const IPresentCaptureProvider* captureProvider = nullptr,
-        const ISensorSnapshotProvider* sensorProvider = nullptr
+        const ISensorSnapshotProvider* sensorProvider = nullptr,
+        IUpscalerProvider* upscalerProvider = nullptr
     );
     ~MetricsHub();
 
@@ -93,6 +109,9 @@ public:
     }
     void setSensorProvider(const ISensorSnapshotProvider* provider) noexcept {
         sensorProvider_ = provider;
+    }
+    void setUpscalerProvider(IUpscalerProvider* provider) noexcept {
+        upscalerProvider_ = provider;
     }
 
     /**
@@ -122,6 +141,7 @@ private:
     const IForegroundProcessProvider* fgProvider_{nullptr};
     const IPresentCaptureProvider* captureProvider_{nullptr};
     const ISensorSnapshotProvider* sensorProvider_{nullptr};
+    IUpscalerProvider* upscalerProvider_{nullptr};
 
     mutable std::mutex snapshotMutex_;
     MetricsSnapshot snapshot_;

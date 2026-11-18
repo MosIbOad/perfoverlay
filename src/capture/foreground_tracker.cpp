@@ -21,11 +21,19 @@ std::string toLower(std::string_view str) {
     return result;
 }
 
-std::string getProcessImageName(HANDLE processHandle) {
+struct ProcessImageInfo {
+    std::string fullPath;
+    std::string fileName;
+};
+
+ProcessImageInfo getProcessImageInfo(HANDLE processHandle) {
     std::array<char, MAX_PATH> pathBuffer{};
     DWORD size = static_cast<DWORD>(pathBuffer.size());
     if (QueryFullProcessImageNameA(processHandle, 0, pathBuffer.data(), &size)) {
-        return std::filesystem::path(pathBuffer.data()).filename().string();
+        return ProcessImageInfo{
+            .fullPath = std::string(pathBuffer.data(), size),
+            .fileName = std::filesystem::path(pathBuffer.data()).filename().string()
+        };
     }
     return {};
 }
@@ -88,9 +96,12 @@ std::optional<ForegroundProcessInfo> ForegroundProcessTracker::getActiveProcess(
     const std::string windowTitle(titleBuffer.data());
 
     std::string processName;
+    std::string executablePath;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
     if (hProcess) {
-        processName = getProcessImageName(hProcess);
+        const auto imageInfo = getProcessImageInfo(hProcess);
+        processName = imageInfo.fileName;
+        executablePath = imageInfo.fullPath;
         CloseHandle(hProcess);
     }
 
@@ -102,6 +113,7 @@ std::optional<ForegroundProcessInfo> ForegroundProcessTracker::getActiveProcess(
         .processId = processId,
         .processName = std::move(processName),
         .windowTitle = windowTitle,
+        .executablePath = std::move(executablePath),
     };
 }
 

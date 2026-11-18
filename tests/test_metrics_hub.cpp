@@ -1,4 +1,5 @@
 #include "core/metrics_hub.hpp"
+#include "upscaler/upscaler_types.hpp"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -11,6 +12,7 @@
 using Catch::Approx;
 using namespace perfoverlay::core;
 using namespace perfoverlay::sensors;
+using namespace perfoverlay::upscaler;
 
 namespace {
 
@@ -48,6 +50,24 @@ public:
     SensorSnapshot getSnapshot() const override {
         const_cast<MockSensorSnapshotProvider*>(this)->callCount++;
         return currentSnapshot;
+    }
+};
+
+class MockUpscalerProvider : public IUpscalerProvider {
+public:
+    std::unordered_map<uint32_t, perfoverlay::upscaler::UpscalerInfo> upscalerMap;
+    int callCount{0};
+
+    std::optional<perfoverlay::upscaler::UpscalerInfo> getUpscalerInfo(
+        uint32_t processId,
+        std::string_view /*executablePath*/
+    ) override {
+        const_cast<MockUpscalerProvider*>(this)->callCount++;
+        auto it = upscalerMap.find(processId);
+        if (it != upscalerMap.end()) {
+            return it->second;
+        }
+        return std::nullopt;
     }
 };
 
@@ -209,4 +229,44 @@ TEST_CASE("MetricsHub - Background thread lifecycle and concurrent reads", "[hub
 
     hub.stop();
     REQUIRE_FALSE(hub.isRunning());
+}
+
+TEST_CASE("MetricsHub - Integrates upscaler detection for active game", "[hub]") {
+    MockForegroundProvider fg;
+    fg.activeGame = ActiveGameInfo{
+        .processId = 7777,
+        .processName = "Cyberpunk2077.exe",
+        .windowTitle = "Cyberpunk 2077",
+        .executablePath = "C:/Games/Cyberpunk/bin/x64/Cyberpunk2077.exe"
+    };
+
+    MockPresentCaptureProvider capture;
+    MockSensorSnapshotProvider sensors;
+    MockUpscalerProvider upscaler;
+    upscaler.upscalerMap[7777] = perfoverlay::upscaler::UpscalerInfo{
+        .dlss = true,
+        .dlssFrameGen = true,
+        .fsr = "FSR 3",
+        .xess = false
+    };
+
+    MetricsHub hub(&fg, &capture, &sensors, &upscaler);
+    hub.pollOnce(true);
+
+    const MetricsSnapshot snap = hub.getSnapshot();
+    REQUIRE(snap.hasActiveGame);
+    REQUIRE(snap.upscaler.has_value());
+    REQUIRE(snap.upscaler->dlss);
+    REQUIRE(snap.upscaler->dlssFrameGen);
+    REQUIRE(snap.upscaler->fsr == "FSR 3");
+    REQUIRE_FALSE(snap.upscaler->xess);
+    REQUIRE(snap.upscaler->formatSummary() == "DLSS, DLSS-FG, FSR 3");
+
+    // When active game is lost, upscaler should be cleared
+    fg.activeGame = std::nullopt;
+    hub.pollOnce(true);
+
+    const MetricsSnapshot emptySnap = hub.getSnapshot();
+    REQUIRE_FALSE(emptySnap.hasActiveGame);
+    REQUIRE_FALSE(emptySnap.upscaler.has_value());
 }

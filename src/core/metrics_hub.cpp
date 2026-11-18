@@ -5,10 +5,12 @@ namespace perfoverlay::core {
 MetricsHub::MetricsHub(
     const IForegroundProcessProvider* fgProvider,
     const IPresentCaptureProvider* captureProvider,
-    const ISensorSnapshotProvider* sensorProvider
+    const ISensorSnapshotProvider* sensorProvider,
+    IUpscalerProvider* upscalerProvider
 ) : fgProvider_(fgProvider),
     captureProvider_(captureProvider),
-    sensorProvider_(sensorProvider) {}
+    sensorProvider_(sensorProvider),
+    upscalerProvider_(upscalerProvider) {}
 
 MetricsHub::~MetricsHub() {
     stop();
@@ -75,15 +77,26 @@ void MetricsHub::pollOnce(bool pollSensors) {
             } else {
                 next.frameStats = std::nullopt;
             }
+
+            if (upscalerProvider_) {
+                next.upscaler = upscalerProvider_->getUpscalerInfo(
+                    activeFg->processId,
+                    activeFg->executablePath
+                );
+            } else {
+                next.upscaler = std::nullopt;
+            }
         } else {
             next.hasActiveGame = false;
             next.activeGame = std::nullopt;
             next.frameStats = std::nullopt;
+            next.upscaler = std::nullopt;
         }
     } else {
         next.hasActiveGame = false;
         next.activeGame = std::nullopt;
         next.frameStats = std::nullopt;
+        next.upscaler = std::nullopt;
     }
 
     // 2. Hardware sensors (500 ms cycle)

@@ -84,6 +84,19 @@ target_link_libraries(perfoverlay_ui PUBLIC
     dwmapi
 )
 
+# Upscaler static library (File-based upscaler detection: DLSS, FSR, XeSS)
+add_library(perfoverlay_upscaler STATIC
+    src/upscaler/filesystem.cpp
+    src/upscaler/process_path.cpp
+    src/upscaler/upscaler_detector.cpp
+)
+target_include_directories(perfoverlay_upscaler PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_link_libraries(perfoverlay_upscaler PUBLIC
+    perfoverlay_core
+)
+
 # Main executable
 add_executable(perfoverlay
     src/main.cpp
@@ -92,6 +105,7 @@ target_link_libraries(perfoverlay PRIVATE
     perfoverlay_core
     perfoverlay_sensors
     perfoverlay_capture
+    perfoverlay_upscaler
     perfoverlay_ui
 )
 
@@ -104,11 +118,13 @@ add_executable(perfoverlay_tests
     tests/test_sensors.cpp
     tests/test_capture.cpp
     tests/test_metrics_hub.cpp
+    tests/test_upscaler.cpp
 )
 target_link_libraries(perfoverlay_tests PRIVATE
     perfoverlay_core
     perfoverlay_sensors
     perfoverlay_capture
+    perfoverlay_upscaler
     perfoverlay_ui
     Catch2::Catch2WithMain
 )

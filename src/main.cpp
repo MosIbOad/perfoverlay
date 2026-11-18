@@ -3,6 +3,7 @@
 #include "core/metrics_hub.hpp"
 #include "sensors/sensor_manager.hpp"
 #include "ui/overlay_window.hpp"
+#include "upscaler/upscaler_detector.hpp"
 
 #include <chrono>
 #include <iomanip>
@@ -46,10 +47,13 @@ int main(int argc, char* argv[]) {
     // 3. Foreground process tracker
     perfoverlay::capture::ForegroundProcessTracker fgTracker;
 
-    // 4. Central MetricsHub coordination
-    perfoverlay::core::MetricsHub hub(&fgTracker, &etwCapture, &sensorManager);
+    // 4. Upscaler detector (file-based game directory scanner, anti-cheat safe)
+    perfoverlay::upscaler::UpscalerDetector upscalerDetector;
 
-    // 5. Initialize Win32 + D3D11 + ImGui Overlay Window
+    // 5. Central MetricsHub coordination
+    perfoverlay::core::MetricsHub hub(&fgTracker, &etwCapture, &sensorManager, &upscalerDetector);
+
+    // 6. Initialize Win32 + D3D11 + ImGui Overlay Window
     perfoverlay::ui::OverlayWindow overlay;
     if (!headlessMode) {
         if (!overlay.init()) {
@@ -74,6 +78,12 @@ int main(int argc, char* argv[]) {
             .p01LowFps = 0.0,
             .avgFrameTimeMs = 0.0,
             .p99FrameTimeMs = 0.0
+        };
+        initialDummy.upscaler = perfoverlay::upscaler::UpscalerInfo{
+            .dlss = true,
+            .dlssFrameGen = true,
+            .fsr = "FSR 3",
+            .xess = false
         };
         overlay.render(initialDummy);
     }
@@ -127,6 +137,9 @@ int main(int argc, char* argv[]) {
                 }
                 if (snap.sensors.gpuUsagePercent.has_value()) {
                     std::cout << "GPU: " << std::fixed << std::setprecision(1) << *snap.sensors.gpuUsagePercent << "%";
+                }
+                if (snap.upscaler.has_value() && snap.upscaler->anyDetected()) {
+                    std::cout << " | Upscaler: " << snap.upscaler->formatSummary();
                 }
                 std::cout << "\n";
             }

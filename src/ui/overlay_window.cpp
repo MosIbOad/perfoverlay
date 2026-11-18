@@ -387,6 +387,17 @@ void OverlayWindow::render(const core::MetricsSnapshot& snapshot) {
             }
             ImGui::TextDisabled("Power: %.1f W", *snapshot.sensors.gpuPowerW);
         }
+
+        // Upscaler Telemetry (Detected in game files)
+        ImGui::Separator();
+        if (snapshot.upscaler.has_value() && snapshot.upscaler->anyDetected()) {
+            ImGui::TextColored(ImVec4(0.75f, 0.55f, 1.0f, 1.0f), "Upscaler: %s", snapshot.upscaler->formatSummary().c_str());
+            ImGui::TextDisabled("Detected in game files");
+        } else if (snapshot.hasActiveGame) {
+            ImGui::TextDisabled("Upscaler: None detected");
+        } else {
+            ImGui::TextDisabled("Upscaler: N/A");
+        }
     }
     ImGui::End();
 

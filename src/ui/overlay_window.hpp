@@ -16,7 +16,7 @@ namespace perfoverlay::ui {
 
 struct OverlayConfig {
     int initialWidth{340};
-    int initialHeight{230};
+    int initialHeight{285};
     int offsetX{20};
     int offsetY{20};
 };

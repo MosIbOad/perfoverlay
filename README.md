@@ -9,6 +9,18 @@ Lightweight, no-injection FPS and hardware overlay for Windows. Shows FPS, 1% / 
 - **Anti-Cheat Güvenliği**: Oyun sürecine ASLA DLL enjekte edilmez, API hook atılmaz ve oyunun Direct3D aygıtına dokunulmaz. FPS verisi harici ETW (PresentMon yaklaşımı) ile, donanım telemetrisi ise resmi API'lerle (AMD ADLX / Windows PDH) toplanır. Ban riski taşımaz.
 - **Kısayol Tuşu**: **F10** tuşuna basarak overlay penceresini dilediğiniz zaman anında gizleyebilir veya tekrar gösterebilirsiniz.
 
+## Upscaler & Frame Generation Detection
+
+`perfoverlay`, aktif oyunun dosyalarında mevcut olan upscaler (DLSS, FSR, XeSS) ve Frame Generation kütüphanelerini tespit eder.
+
+### Çalışma Prensibi & Anti-Cheat Güvenliği
+1. Aktif oyun penceresinin çalıştırılabilir dosya yolu `QueryFullProcessImageName` ile alınır. Bu işlem için yalnızca en düşük yetki seviyesi olan `PROCESS_QUERY_LIMITED_INFORMATION` talep edilir; anti-cheat sistemlerini tetikleyebilecek `PROCESS_VM_READ` veya `EnumProcessModules` gibi bellek okuma çağrıları **kesinlikle kullanılmaz**.
+2. Exe'nin bulunduğu klasör ve alt klasörleri derinlik sınırı ile taranır (`nvngx_dlss.dll`, `nvngx_dlssg.dll`, `amd_fidelityfx_*.dll`, `ffx_fsr2_api_*.dll`, `ffx_fsr3_api_*.dll`, `libxess.dll` vb.).
+3. Her oyun için tarama sonucu önbelleğe alınır; kare başına veya sürekli dosya sistemi okuması yapılmaz.
+
+### Bilinen Sınırlamalar
+- **Anlık Aktiflik Durumu**: Overlay arayüzünde "Detected in game files" dürüst etiketi kullanılır. Oyun sürecine hook atılmadığı ve belleği okunmadığı için, ilgili teknolojinin (özellikle Frame Generation veya DLSS/FSR) oyun içi grafik ayarları menüsünden o an **aktif edilip edilmediği bu sürümde tespit edilmemektedir**. Yalnızca oyunun ilgili upscaler kütüphanelerini barındırdığı doğrulanır.
+
 ## Metrics & 1% / 0.1% Low Methodology
 
 `perfoverlay` implements the **Average of the Worst 1% / 0.1%** (Expected Shortfall / 1% Average Low) method for reporting 1% Low and 0.1% Low FPS.
